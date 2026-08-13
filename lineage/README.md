@@ -15,10 +15,10 @@ repository.
 
 ## The rule
 
-- Every run ends with a `PERFORMANCE.md` (see `kit/`). Distill it,
+- Every run ends with an `EVALS.md` (see `kit/`). Distill it,
   sanitize it, and add it here as
-  `performance/<YYYY>-<MM>-<slug>.md`, following
-  `performance/YYYY-MM-slug-name.template.md`.
+  `evals/<YYYY>-<MM>-<slug>.md`, following
+  `evals/YYYY-MM-slug-name.template.md`.
 - An amendment PR to the kit cites the digest that motivated it. No
   digest, no amendment — friction reconstructed from memory is fiction.
 - Digests are sanitized: runs named by slug alone, no verbatim private

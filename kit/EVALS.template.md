@@ -1,11 +1,11 @@
-# PERFORMANCE.md — template (grade the kit, not just the product)
+# EVALS.md — template (grade the kit, not just the product)
 
 > The cost of convergence is part of the report: loop counters spent,
 > majors waived. Grade the templates, not only the product — the templates
 > are the durable asset, and the product is one sample of their output.
 
 ```markdown
-# PERFORMANCE — <session/date>
+# EVALS — <session/date>
 
 ## Verdict table
 

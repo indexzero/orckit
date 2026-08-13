@@ -13,7 +13,7 @@ one writer per file, horrible to read and near-perfect to resume from — while
 your code repositories keep human-curated history. Two registers, on purpose.
 
 The kit improves the way software does: every run ends by grading the kit
-itself (`PERFORMANCE.md`), and grades become pull requests here.
+itself (`EVALS.md`), and grades become pull requests here.
 
 ## First step
 
@@ -33,7 +33,7 @@ section is the manual shape.
 
 | Directory | What | Consumed by |
 |---|---|---|
-| `kit/` | The instantiable templates: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, performance, design doc, dispatch pairs | An agent instantiating a run home in your orckits |
+| `kit/` | The instantiable templates: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs | An agent instantiating a run home in your orckits |
 | `skills/` | The skills slot — deliberately empty. A kit contains skills, but WHICH skills is unique to the kit, the run of that kit, and the user's overall context. Populate it when you instantiate | Any agent CLI that loads skills |
 | `checks/` | The machine-checkable half of the rules, as scripts: porcelain baseline, trailer/footer, ownership subset | Gate verification; CI |
 | `playbooks/` | Procedural knowledge that is neither template nor skill: rebasing over squash-merges, adversarial review, the CI-green merge bar | Supervisors and humans |
@@ -54,7 +54,7 @@ section is the manual shape.
 4. **Land.** Code merges into the target repo through your own curation —
    a squash-merge skill with hash-bound approvals is the proven shape. The
    two histories never mix registers.
-5. **Grade.** The run ends with `PERFORMANCE.md`: what the kit got right,
+5. **Grade.** The run ends with `EVALS.md`: what the kit got right,
    numbered diff-shaped amendments, honest costs. Distill it, sanitize it,
    and bring the amendments here with a `lineage/` entry — this is where
    your kit's evolution and everyone's meet.
