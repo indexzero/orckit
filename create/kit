@@ -1,0 +1,298 @@
+#!/bin/sh
+# kit — scaffold a run home in your private orckits.
+#
+# Copies kit/ into <orckits>/<user>/<repo>/<YYYY>-<MM>-<slug>/, strips the
+# .template infix, leaves the skills/ slot empty, and records provenance in
+# kit.json. See README.md, lifecycle step 1.
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage: create/kit --repo <owner>/<repo> --slug <slug> [options]
+
+Instantiate the kit templates into a run home (README lifecycle, step 1):
+
+  <orckits>/<owner>/<repo>/<YYYY>-<MM>-<slug>/
+
+Every *.template.md loses the .template infix, dispatches/ is copied as-is,
+the skills/ slot starts as its index alone (which skills belong is unique to
+the run — populate it yourself), and kit.json (version 2) records the run's provenance and
+config: the orckit gitHead this run descends from; inputs[] — every source
+template plus this script itself, each with a sha256: digest and a dirty bit
+(does the source differ from its blob at gitHead?); the target as an
+npm-repository-style object (type/url, plus directory and the target's own
+gitHead when known); the eval axes this run will be graded on; and whether
+input digests may travel into the public lineage digest.
+
+Options:
+  --repo <target>       the TARGET code repo this run is about:
+                        <owner>/<repo> (GitHub assumed) or a full git URL
+  --slug <slug>         run slug, kebab-case lowercase (e.g. fix-auth-loop)
+  --directory <path>    subdirectory of the target this run is scoped to
+                        (monorepos; recorded as target.directory)
+  --orckits DIR         local orckits clone
+                        (default: sibling of this orckit checkout, ../orckits)
+  --axes <a,b,c>        eval axes for this run, comma-separated kebab-case
+                        (default: empty — fill during the interview)
+  --no-lineage-digests  keep per-input digests out of the public lineage
+                        digest (kit.json always records them; gates upstream)
+  --yes                 skip all confirmation prompts
+  --help                show this help
+
+Missing --repo/--slug are prompted for via gum.
+EOF
+}
+
+die() { echo "error: $*" >&2; exit 1; }
+
+hash_file() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    echo "error: neither shasum nor sha256sum found" >&2
+    return 1
+  fi
+}
+
+hash_stdin() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+  else
+    echo "error: neither shasum nor sha256sum found" >&2
+    return 1
+  fi
+}
+
+# Confirm with gum unless --yes; die if gum is missing and --yes was not passed.
+confirm() {
+  if [ "$yes" -eq 1 ]; then return 0; fi
+  command -v gum >/dev/null 2>&1 \
+    || die "gum not found — run 'mise install' or pass --yes"
+  gum confirm "$1"
+}
+
+repo=''
+slug=''
+directory=''
+orckits=''
+axes=''
+lineage_digests=true
+yes=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --repo) [ $# -ge 2 ] || die "--repo requires a value"; repo=$2; shift 2 ;;
+    --slug) [ $# -ge 2 ] || die "--slug requires a value"; slug=$2; shift 2 ;;
+    --directory) [ $# -ge 2 ] || die "--directory requires a value"; directory=$2; shift 2 ;;
+    --orckits) [ $# -ge 2 ] || die "--orckits requires a value"; orckits=$2; shift 2 ;;
+    --axes) [ $# -ge 2 ] || die "--axes requires a value"; axes=$2; shift 2 ;;
+    --no-lineage-digests) lineage_digests=false; shift ;;
+    --yes) yes=1; shift ;;
+    *) die "unknown argument: $1 (see --help)" ;;
+  esac
+done
+
+command -v git >/dev/null 2>&1 || die "git not found"
+command -v jq >/dev/null 2>&1 || die "jq not found — run 'mise install' first"
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+orckit_root=$(CDPATH='' cd -- "$script_dir/.." && pwd)
+kit_dir=$orckit_root/kit
+[ -d "$kit_dir" ] || die "kit/ not found at $kit_dir — is this an orckit checkout?"
+
+if [ -z "$orckits" ]; then
+  orckits=$(CDPATH='' cd -- "$orckit_root/.." && pwd)/orckits
+fi
+
+# Prompt for anything still missing.
+if [ -z "$repo" ] || [ -z "$slug" ]; then
+  command -v gum >/dev/null 2>&1 \
+    || die "missing --repo/--slug and gum not found — pass the flags or run 'mise install'"
+  if [ -z "$repo" ]; then
+    repo=$(gum input --prompt 'target repo> ' --placeholder '<owner>/<repo> or git URL')
+  fi
+  if [ -z "$slug" ]; then
+    slug=$(gum input --prompt 'slug> ' --placeholder 'kebab-case-lowercase')
+  fi
+fi
+
+# Normalize the target: <owner>/<repo> sugar (GitHub assumed) or a full git
+# URL at the boundary; canonical npm-repository-style in the record. The
+# run-home path is derived from the URL path, never stored.
+case "$repo" in
+  (*://*|git@*:*)
+    target_url=$repo
+    ;;
+  (*)
+    printf '%s' "$repo" | grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$' \
+      || die "--repo must be <owner>/<repo> or a git URL, got: '$repo'"
+    target_url="git+https://github.com/$repo.git"
+    ;;
+esac
+fetch_url=${target_url#git+}
+target_rel=$(printf '%s' "$target_url" \
+  | sed -e 's#^[A-Za-z+]*://##' -e 's#^git@##' -e 's#^[^/:]*[:/]##' \
+        -e 's#\.git$##' -e 's#/*$##')
+[ -n "$target_rel" ] || die "cannot derive a run-home path from: '$target_url'"
+if [ -n "$directory" ]; then
+  case "$directory" in
+    (/*|*..*) die "--directory must be a relative path inside the target, got: '$directory'" ;;
+  esac
+fi
+printf '%s' "$slug" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' \
+  || die "--slug must be kebab-case lowercase (e.g. fix-auth-loop), got: '$slug'"
+if [ -n "$axes" ]; then
+  old_ifs=$IFS
+  IFS=','
+  for axis in $axes; do
+    printf '%s' "$axis" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' \
+      || die "--axes entries must be kebab-case lowercase, got: '$axis'"
+  done
+  IFS=$old_ifs
+fi
+
+[ -d "$orckits" ] || die "orckits dir not found: $orckits (run create/kits-repo first?)"
+git -C "$orckits" rev-parse --git-dir >/dev/null 2>&1 \
+  || die "not a git repo: $orckits — your orckits must be a git clone"
+
+stamp=$(date +%Y-%m)
+run_rel=$target_rel/$stamp-$slug
+run_home=$orckits/$run_rel
+[ ! -e "$run_home" ] || die "run home already exists: $run_home"
+
+# Content-address the target's starting state when reachable — a run is a
+# sample against a snapshot, not just a repo. Omitted gracefully offline.
+target_head=$(GIT_TERMINAL_PROMPT=0 git ls-remote "$fetch_url" HEAD 2>/dev/null \
+  | awk 'NR==1 {print $1}')
+
+git_head=$(git -C "$orckit_root" rev-parse HEAD)
+orckit_short=$(git -C "$orckit_root" rev-parse --short HEAD)
+describe=$(git -C "$orckit_root" describe --always --tags)
+
+# inputs[]: the run's x-values — every kit/ source template plus the
+# transform itself (this script), each digested (sha256 over raw bytes) and
+# marked dirty when the source differs from its blob at gitHead. Destination
+# names are derivable (strip .template — the transform is pinned by gitHead),
+# so they are not recorded; neither is whole-checkout dirtiness (any .dirty).
+input_line() {
+  in_src=$1
+  in_sha=$(hash_file "$orckit_root/$in_src")
+  in_dirty=true
+  if git -C "$orckit_root" cat-file -e "$git_head:$in_src" 2>/dev/null; then
+    in_blob=$(git -C "$orckit_root" show "$git_head:$in_src" | hash_stdin)
+    [ "$in_blob" != "$in_sha" ] || in_dirty=false
+  fi
+  printf '%s\tsha256:%s\t%s\n' "$in_src" "$in_sha" "$in_dirty"
+}
+inputs_json=$(
+  {
+    (cd "$kit_dir" && find . -type f | sed 's|^\./||' | sort) \
+      | while IFS= read -r src; do input_line "kit/$src"; done
+    input_line create/kit
+  } | jq -Rn '[inputs | split("\t")
+               | {source: .[0], digest: .[1], dirty: (.[2] == "true")}]'
+)
+
+if [ "$(printf '%s' "$inputs_json" | jq 'any(.[]; .dirty)')" = true ]; then
+  echo '!!! ================================================================' >&2
+  echo "!!! WARNING: some inputs at $orckit_root differ from gitHead." >&2
+  echo '!!! You are instantiating uncommitted state; the dirty inputs are' >&2
+  echo '!!! marked in kit.json and in the plan below.' >&2
+  echo '!!! ================================================================' >&2
+fi
+
+echo "Plan:"
+echo "  run home    $run_home"
+echo "  gitHead     $git_head ($describe)"
+echo "  target      $target_url${directory:+ (directory: $directory)}"
+echo "  targetHead  ${target_head:-<unreachable — omitted>}"
+echo "  axes        ${axes:-<none — fill evals.axes during the interview>}"
+echo "  lineage     includeInputDigests: $lineage_digests"
+echo "  files:"
+printf '%s' "$inputs_json" \
+  | jq -r '.[] | select(.source | startswith("kit/"))
+           | "    \(.source | ltrimstr("kit/") | sub("\\.template\\.md$"; ".md"))\(if .dirty then "   (dirty — differs from gitHead)" else "" end)"'
+echo "    kit.json"
+if [ "$(printf '%s' "$inputs_json" \
+      | jq '[.[] | select(.source == "create/kit")] | any(.dirty)')" = true ]; then
+  echo "  !! create/kit itself is dirty — the transform is off-book"
+fi
+echo ""
+
+confirm "Scaffold $run_rel?" || die "aborted"
+
+# Copy kit/ verbatim (dispatches/ and its per-dispatch blanks included),
+# then strip the .template infix.
+mkdir -p "$run_home"
+cp -R "$kit_dir/." "$run_home/"
+find "$run_home" -type f -name '*.template.md' | while IFS= read -r f; do
+  mv "$f" "${f%.template.md}.md"
+done
+mkdir -p "$run_home/skills"
+
+# Provenance + run-config, consolidated in kit.json (version 2): inputs[] is
+# the birth record; evals.axes is the data contract this run will be graded
+# on (renaming an axis mid-lineage is a breaking change);
+# lineage.includeInputDigests gates whether the digests travel into the
+# public lineage digest at teardown. target.directory / target.gitHead are
+# omitted when empty rather than recorded as blanks.
+if [ -n "$axes" ]; then
+  axes_json=$(printf '%s' "$axes" | jq -R 'split(",")')
+else
+  axes_json='[]'
+fi
+jq -n \
+  --arg git_head "$git_head" \
+  --arg describe "$describe" \
+  --arg instantiated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg slug "$slug" \
+  --arg target_url "$target_url" \
+  --arg target_dir "$directory" \
+  --arg target_head "$target_head" \
+  --argjson inputs "$inputs_json" \
+  --argjson axes "$axes_json" \
+  --argjson lineage_digests "$lineage_digests" \
+  '{
+     version: 2,
+     gitHead: $git_head,
+     describe: $describe,
+     instantiatedAt: $instantiated_at,
+     slug: $slug,
+     target: ({ type: "git", url: $target_url }
+              + (if $target_dir != "" then { directory: $target_dir } else {} end)
+              + (if $target_head != "" then { gitHead: $target_head } else {} end)),
+     inputs: $inputs,
+     evals: { file: "EVALS.md", axes: $axes },
+     lineage: { includeInputDigests: $lineage_digests }
+   }' > "$run_home/kit.json"
+
+echo "Scaffolded $run_home"
+echo ""
+
+# Offer to commit the run home in orckits — every event is a commit.
+if confirm "Commit the run home in $orckits?"; then
+  git -C "$orckits" add "$run_home"
+  git -C "$orckits" commit -m "instantiate $run_rel from orckit $orckit_short"
+  echo "Committed in $orckits."
+else
+  echo "Not committed — remember: if it is not in the ledger, it did not happen."
+fi
+
+echo ""
+echo "Next steps:"
+echo "  1. Fill PROBLEM.STATEMENT.md by interviewing the user — spoken intent"
+echo "     becomes a confirmed problem statement before anything else."
+echo "  2. Populate skills/ and its index (skills/README.md) — which skills"
+echo "     belong is unique to this run."
+echo "  3. Adversarial review of the scaffold BEFORE any code work"
+echo "     (lifecycle step 2 — plans have bugs too)."
+if [ -z "$axes" ]; then
+  echo "  4. Set evals.axes in kit.json — the graded axes are this run's"
+  echo "     data contract; name them before work begins, and never rename one"
+  echo "     mid-lineage."
+fi

@@ -22,7 +22,7 @@ COMPLETE when, and only when, every line has a verified evidence path in
 - [ ] <review file: zero open blockers>
 - [ ] <DEVIATIONS.md current; QUESTIONS.md current; BACKLOG holds minors>
 - [ ] <final independent verification, raw output on file>
-- [ ] <DELIVERY/PERFORMANCE notes written, incl. loop counters spent>
+- [ ] <DELIVERY/EVALS notes written, incl. loop counters spent>
 
 ## Procedure (every invocation, in order)
 

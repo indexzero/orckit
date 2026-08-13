@@ -13,12 +13,13 @@ one writer per file, horrible to read and near-perfect to resume from — while
 your code repositories keep human-curated history. Two registers, on purpose.
 
 The kit improves the way software does: every run ends by grading the kit
-itself (`PERFORMANCE.md`), and grades become pull requests here.
+itself (`EVALS.md`), and grades become pull requests here.
 
 ## First step
 
 **Make a private clone of this repository named `<your-user>/orckits`
-(WITH AN S).**
+(WITH AN S).** `create/kits-repo` does this for you; the rest of this
+section is the manual shape.
 
 - `orckit` (this repo, public) is the **program**: templates, skills, checks,
   playbooks. Fork it, PR it.
@@ -32,7 +33,7 @@ itself (`PERFORMANCE.md`), and grades become pull requests here.
 
 | Directory | What | Consumed by |
 |---|---|---|
-| `kit/` | The instantiable templates: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, performance, design doc, dispatch pairs | An agent instantiating a run home in your orckits |
+| `kit/` | The instantiable templates: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs, skills index | An agent instantiating a run home in your orckits |
 | `skills/` | The skills slot — deliberately empty. A kit contains skills, but WHICH skills is unique to the kit, the run of that kit, and the user's overall context. Populate it when you instantiate | Any agent CLI that loads skills |
 | `checks/` | The machine-checkable half of the rules, as scripts: porcelain baseline, trailer/footer, ownership subset | Gate verification; CI |
 | `playbooks/` | Procedural knowledge that is neither template nor skill: rebasing over squash-merges, adversarial review, the CI-green merge bar | Supervisors and humans |
@@ -43,6 +44,7 @@ itself (`PERFORMANCE.md`), and grades become pull requests here.
 1. **Instantiate.** In your private orckits, an agent copies `kit/` into
    `<user>/<repo>/<YYYY>-<MM>-<slug>/`, records the orckit commit sha it
    instantiated from, and fills `PROBLEM.STATEMENT.md` by interviewing you.
+   `create/kit` does the copying and the recording; the interview stays yours.
 2. **Review the scaffold.** The instantiated plan gets its own adversarial
    review before any code work — plans have bugs too.
 3. **Run.** A supervisor session adopts `SUPERVISOR.md`, installs `/goal` as
@@ -52,7 +54,7 @@ itself (`PERFORMANCE.md`), and grades become pull requests here.
 4. **Land.** Code merges into the target repo through your own curation —
    a squash-merge skill with hash-bound approvals is the proven shape. The
    two histories never mix registers.
-5. **Grade.** The run ends with `PERFORMANCE.md`: what the kit got right,
+5. **Grade.** The run ends with `EVALS.md`: what the kit got right,
    numbered diff-shaped amendments, honest costs. Distill it, sanitize it,
    and bring the amendments here with a `lineage/` entry — this is where
    your kit's evolution and everyone's meet.

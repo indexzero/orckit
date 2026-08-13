@@ -1,6 +1,6 @@
 # Digest — <run slug> (<YYYY-MM>)
 
-> Sanitized from the run's PERFORMANCE.md before it enters the public
+> Sanitized from the run's EVALS.md before it enters the public
 > record: no verbatim private context, no absolute paths, the run named by
 > slug alone. One digest per run; the digest is the evidence an amendment
 > PR cites.
