@@ -16,13 +16,21 @@ Instantiate the kit templates into a run home (README lifecycle, step 1):
 
 Every *.template.md loses the .template infix, dispatches/ is copied as-is,
 skills/ is created empty (which skills belong is unique to the run — populate
-it yourself), and kit.json records the orckit sha this run descends from.
+it yourself), and kit.json records the run's provenance and config: the
+orckit gitHead this run descends from, every instantiated file's sha256 with
+a per-file dirty bit (does it differ from that file at gitHead?), the
+performance axes this run will be graded on, and whether file hashes may
+travel into the public lineage digest.
 
 Options:
   --repo <user>/<repo>  the TARGET code repo this run is about
   --slug <slug>         run slug, kebab-case lowercase (e.g. fix-auth-loop)
   --orckits DIR         local orckits clone
                         (default: sibling of this orckit checkout, ../orckits)
+  --axes <a,b,c>        performance axes for this run, comma-separated
+                        kebab-case (default: empty — fill during the interview)
+  --no-digest-hashes    keep per-file hashes out of the public lineage digest
+                        (kit.json always records them; this gates upstream only)
   --yes                 skip all confirmation prompts
   --help                show this help
 
@@ -43,6 +51,17 @@ hash_file() {
   fi
 }
 
+hash_stdin() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | awk '{print $1}'
+  else
+    echo "error: neither shasum nor sha256sum found" >&2
+    return 1
+  fi
+}
+
 # Confirm with gum unless --yes; die if gum is missing and --yes was not passed.
 confirm() {
   if [ "$yes" -eq 1 ]; then return 0; fi
@@ -54,6 +73,8 @@ confirm() {
 repo=''
 slug=''
 orckits=''
+axes=''
+digest_hashes=true
 yes=0
 
 while [ $# -gt 0 ]; do
@@ -62,6 +83,8 @@ while [ $# -gt 0 ]; do
     --repo) [ $# -ge 2 ] || die "--repo requires a value"; repo=$2; shift 2 ;;
     --slug) [ $# -ge 2 ] || die "--slug requires a value"; slug=$2; shift 2 ;;
     --orckits) [ $# -ge 2 ] || die "--orckits requires a value"; orckits=$2; shift 2 ;;
+    --axes) [ $# -ge 2 ] || die "--axes requires a value"; axes=$2; shift 2 ;;
+    --no-digest-hashes) digest_hashes=false; shift ;;
     --yes) yes=1; shift ;;
     *) die "unknown argument: $1 (see --help)" ;;
   esac
@@ -95,6 +118,15 @@ printf '%s' "$repo" | grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$' \
   || die "--repo must look like <user>/<repo>, got: '$repo'"
 printf '%s' "$slug" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' \
   || die "--slug must be kebab-case lowercase (e.g. fix-auth-loop), got: '$slug'"
+if [ -n "$axes" ]; then
+  old_ifs=$IFS
+  IFS=','
+  for axis in $axes; do
+    printf '%s' "$axis" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' \
+      || die "--axes entries must be kebab-case lowercase, got: '$axis'"
+  done
+  IFS=$old_ifs
+fi
 
 [ -d "$orckits" ] || die "orckits dir not found: $orckits (run create/kits-repo first?)"
 git -C "$orckits" rev-parse --git-dir >/dev/null 2>&1 \
@@ -105,33 +137,49 @@ run_rel=$repo/$stamp-$slug
 run_home=$orckits/$run_rel
 [ ! -e "$run_home" ] || die "run home already exists: $run_home"
 
-orckit_sha=$(git -C "$orckit_root" rev-parse HEAD)
+git_head=$(git -C "$orckit_root" rev-parse HEAD)
 orckit_short=$(git -C "$orckit_root" rev-parse --short HEAD)
-orckit_describe=$(git -C "$orckit_root" describe --always --dirty --tags)
-if [ -n "$(git -C "$orckit_root" status --porcelain)" ]; then
-  orckit_dirty=true
-else
-  orckit_dirty=false
-fi
+describe=$(git -C "$orckit_root" describe --always --tags)
 
-if [ "$orckit_dirty" = true ]; then
+# files[]: every file kit/ will instantiate — dest name, source path, sha256,
+# and a per-file dirty bit (does the source differ from its blob at gitHead?).
+# Computed from the sources: cp -R makes the run-home copy byte-identical.
+# Whole-checkout dirtiness is inferable (any .dirty), so it is not recorded.
+files_json=$(
+  cd "$kit_dir" && find . -type f | sed 's|^\./||' | sort \
+    | while IFS= read -r src; do
+        case "$src" in
+          (*.template.md) dest=${src%.template.md}.md ;;
+          (*) dest=$src ;;
+        esac
+        sha=$(hash_file "$src")
+        dirty=true
+        if git -C "$orckit_root" cat-file -e "$git_head:kit/$src" 2>/dev/null; then
+          blob=$(git -C "$orckit_root" show "$git_head:kit/$src" | hash_stdin)
+          [ "$blob" != "$sha" ] || dirty=false
+        fi
+        printf '%s\t%s\t%s\t%s\n' "$dest" "kit/$src" "$sha" "$dirty"
+      done \
+    | jq -Rn '[inputs | split("\t")
+               | {name: .[0], source: .[1], sha256: .[2], dirty: (.[3] == "true")}]'
+)
+
+if [ "$(printf '%s' "$files_json" | jq 'any(.[]; .dirty)')" = true ]; then
   echo '!!! ================================================================' >&2
-  echo "!!! WARNING: the orckit checkout at $orckit_root is DIRTY." >&2
-  echo "!!! You are instantiating from uncommitted state; kit.json will" >&2
-  echo '!!! record orckit_dirty: true and provenance will not reproduce.' >&2
+  echo "!!! WARNING: some kit/ files at $orckit_root differ from gitHead." >&2
+  echo '!!! You are instantiating uncommitted template state; the dirty' >&2
+  echo '!!! files are marked in kit.json and in the plan below.' >&2
   echo '!!! ================================================================' >&2
 fi
 
 echo "Plan:"
 echo "  run home    $run_home"
-echo "  orckit sha  $orckit_sha ($orckit_describe)"
+echo "  gitHead     $git_head ($describe)"
+echo "  axes        ${axes:-<none — fill performance.axes during the interview>}"
+echo "  digest      includeFileHashes: $digest_hashes"
 echo "  files:"
-(cd "$kit_dir" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r f; do
-  case "$f" in
-    *.template.md) echo "    ${f%.template.md}.md" ;;
-    *) echo "    $f" ;;
-  esac
-done
+printf '%s' "$files_json" \
+  | jq -r '.[] | "    \(.name)\(if .dirty then "   (dirty — differs from gitHead)" else "" end)"'
 echo "    kit.json"
 echo "    skills/            (empty slot — populate it yourself)"
 echo ""
@@ -147,30 +195,33 @@ find "$run_home" -type f -name '*.template.md' | while IFS= read -r f; do
 done
 mkdir -p "$run_home/skills"
 
-# Provenance: kit.json maps every instantiated file to its sha256.
-templates_json=$(
-  cd "$run_home" \
-    && find . -type f | sed 's|^\./||' | sort | while IFS= read -r rel; do
-         printf '%s\t%s\n' "$rel" "$(hash_file "$rel")"
-       done \
-    | jq -Rn '[inputs | split("\t") | { (.[0]): .[1] }] | add // {}'
-)
+# Provenance + run-config, consolidated in kit.json: files[] is the birth
+# record; performance.axes is the data contract this run will be graded on
+# (renaming an axis mid-lineage is a breaking change); digest.includeFileHashes
+# gates whether the hashes travel into the public lineage digest at teardown.
+if [ -n "$axes" ]; then
+  axes_json=$(printf '%s' "$axes" | jq -R 'split(",")')
+else
+  axes_json='[]'
+fi
 jq -n \
-  --arg orckit_sha "$orckit_sha" \
-  --arg orckit_describe "$orckit_describe" \
-  --argjson orckit_dirty "$orckit_dirty" \
+  --arg git_head "$git_head" \
+  --arg describe "$describe" \
   --arg instantiated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg target_repo "$repo" \
   --arg slug "$slug" \
-  --argjson templates "$templates_json" \
+  --argjson files "$files_json" \
+  --argjson axes "$axes_json" \
+  --argjson digest_hashes "$digest_hashes" \
   '{
-     orckit_sha: $orckit_sha,
-     orckit_describe: $orckit_describe,
-     orckit_dirty: $orckit_dirty,
-     instantiated_at: $instantiated_at,
-     target_repo: $target_repo,
+     gitHead: $git_head,
+     describe: $describe,
+     instantiatedAt: $instantiated_at,
+     targetRepo: $target_repo,
      slug: $slug,
-     templates: $templates
+     files: $files,
+     performance: { file: "PERFORMANCE.md", axes: $axes },
+     digest: { includeFileHashes: $digest_hashes }
    }' > "$run_home/kit.json"
 
 echo "Scaffolded $run_home"
@@ -192,3 +243,8 @@ echo "     becomes a confirmed problem statement before anything else."
 echo "  2. Populate skills/ — which skills belong is unique to this run."
 echo "  3. Adversarial review of the scaffold BEFORE any code work"
 echo "     (lifecycle step 2 — plans have bugs too)."
+if [ -z "$axes" ]; then
+  echo "  4. Set performance.axes in kit.json — the graded axes are this run's"
+  echo "     data contract; name them before work begins, and never rename one"
+  echo "     mid-lineage."
+fi
