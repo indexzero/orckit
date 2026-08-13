@@ -33,7 +33,7 @@ section is the manual shape.
 
 | Directory | What | Consumed by |
 |---|---|---|
-| `kit/` | The instantiable templates: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs | An agent instantiating a run home in your orckits |
+| `kit/` | The instantiable templates: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs, skills index | An agent instantiating a run home in your orckits |
 | `skills/` | The skills slot — deliberately empty. A kit contains skills, but WHICH skills is unique to the kit, the run of that kit, and the user's overall context. Populate it when you instantiate | Any agent CLI that loads skills |
 | `checks/` | The machine-checkable half of the rules, as scripts: porcelain baseline, trailer/footer, ownership subset | Gate verification; CI |
 | `playbooks/` | Procedural knowledge that is neither template nor skill: rebasing over squash-merges, adversarial review, the CI-green merge bar | Supervisors and humans |

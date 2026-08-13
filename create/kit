@@ -15,8 +15,8 @@ Instantiate the kit templates into a run home (README lifecycle, step 1):
   <orckits>/<owner>/<repo>/<YYYY>-<MM>-<slug>/
 
 Every *.template.md loses the .template infix, dispatches/ is copied as-is,
-skills/ is created empty (which skills belong is unique to the run — populate
-it yourself), and kit.json (version 2) records the run's provenance and
+the skills/ slot starts as its index alone (which skills belong is unique to
+the run — populate it yourself), and kit.json (version 2) records the run's provenance and
 config: the orckit gitHead this run descends from; inputs[] — every source
 template plus this script itself, each with a sha256: digest and a dirty bit
 (does the source differ from its blob at gitHead?); the target as an
@@ -218,7 +218,6 @@ printf '%s' "$inputs_json" \
   | jq -r '.[] | select(.source | startswith("kit/"))
            | "    \(.source | ltrimstr("kit/") | sub("\\.template\\.md$"; ".md"))\(if .dirty then "   (dirty — differs from gitHead)" else "" end)"'
 echo "    kit.json"
-echo "    skills/            (empty slot — populate it yourself)"
 if [ "$(printf '%s' "$inputs_json" \
       | jq '[.[] | select(.source == "create/kit")] | any(.dirty)')" = true ]; then
   echo "  !! create/kit itself is dirty — the transform is off-book"
@@ -288,7 +287,8 @@ echo ""
 echo "Next steps:"
 echo "  1. Fill PROBLEM.STATEMENT.md by interviewing the user — spoken intent"
 echo "     becomes a confirmed problem statement before anything else."
-echo "  2. Populate skills/ — which skills belong is unique to this run."
+echo "  2. Populate skills/ and its index (skills/README.md) — which skills"
+echo "     belong is unique to this run."
 echo "  3. Adversarial review of the scaffold BEFORE any code work"
 echo "     (lifecycle step 2 — plans have bugs too)."
 if [ -z "$axes" ]; then
