@@ -1,0 +1,4 @@
+[tools]
+gh = "latest"
+gum = "latest"
+jq = "latest"

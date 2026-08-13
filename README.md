@@ -18,7 +18,8 @@ itself (`PERFORMANCE.md`), and grades become pull requests here.
 ## First step
 
 **Make a private clone of this repository named `<your-user>/orckits`
-(WITH AN S).**
+(WITH AN S).** `create/kits-repo` does this for you; the rest of this
+section is the manual shape.
 
 - `orckit` (this repo, public) is the **program**: templates, skills, checks,
   playbooks. Fork it, PR it.
@@ -43,6 +44,7 @@ itself (`PERFORMANCE.md`), and grades become pull requests here.
 1. **Instantiate.** In your private orckits, an agent copies `kit/` into
    `<user>/<repo>/<YYYY>-<MM>-<slug>/`, records the orckit commit sha it
    instantiated from, and fills `PROBLEM.STATEMENT.md` by interviewing you.
+   `create/kit` does the copying and the recording; the interview stays yours.
 2. **Review the scaffold.** The instantiated plan gets its own adversarial
    review before any code work — plans have bugs too.
 3. **Run.** A supervisor session adopts `SUPERVISOR.md`, installs `/goal` as

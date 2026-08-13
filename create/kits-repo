@@ -1,0 +1,91 @@
+#!/bin/sh
+# kits-repo — first-time setup of your private orckits companion repo.
+#
+# Creates <user>/<name> (private) on GitHub, clones it as a sibling of this
+# orckit checkout, seeds a short README, and pushes the initial commit.
+# See README.md "First step".
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage: create/kits-repo [--name NAME] [--path DIR] [--yes]
+
+First-time setup of the private orckits companion repo (README "First step").
+Creates <user>/NAME (private) on GitHub, clones it to DIR, seeds a short
+README, and pushes the initial commit. <user> is derived from `gh api user`.
+
+Options:
+  --name NAME  repository name (default: orckits)
+  --path DIR   local clone destination
+               (default: sibling of this orckit checkout, i.e. ../NAME)
+  --yes        skip the confirmation prompt
+  --help       show this help
+EOF
+}
+
+die() { echo "error: $*" >&2; exit 1; }
+
+name=orckits
+path=''
+yes=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --name) [ $# -ge 2 ] || die "--name requires a value"; name=$2; shift 2 ;;
+    --path) [ $# -ge 2 ] || die "--path requires a value"; path=$2; shift 2 ;;
+    --yes) yes=1; shift ;;
+    *) die "unknown argument: $1 (see --help)" ;;
+  esac
+done
+
+command -v git >/dev/null 2>&1 || die "git not found"
+command -v gh >/dev/null 2>&1 || die "gh not found — run 'mise install' first"
+
+if ! user=$(gh api user -q .login 2>/dev/null) || [ -z "$user" ]; then
+  die "could not determine your GitHub user — is gh authenticated? Run 'gh auth login'."
+fi
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+orckit_root=$(CDPATH='' cd -- "$script_dir/.." && pwd)
+if [ -z "$path" ]; then
+  path=$(CDPATH='' cd -- "$orckit_root/.." && pwd)/$name
+fi
+
+# Preflight: never clobber, remotely or locally.
+if gh repo view "$user/$name" >/dev/null 2>&1; then
+  die "github.com/$user/$name already exists — nothing to create; clone it instead"
+fi
+if [ -e "$path" ]; then
+  die "local path already exists: $path"
+fi
+
+echo "Plan:"
+echo "  repo        github.com/$user/$name"
+echo "  visibility  private"
+echo "  local path  $path"
+echo ""
+
+if [ "$yes" -ne 1 ]; then
+  command -v gum >/dev/null 2>&1 \
+    || die "gum not found — run 'mise install' or pass --yes"
+  gum confirm "Create $user/$name (private) and clone to $path?" || die "aborted"
+fi
+
+gh repo create "$user/$name" --private
+gh repo clone "$user/$name" "$path"
+
+cat > "$path/README.md" <<EOF
+# $name
+
+Private companion to orckit — the data half. One directory per run, named
+\`<user>/<repo>/<YYYY>-<MM>-<slug>/\`. Never PR run context upstream.
+EOF
+
+git -C "$path" add README.md
+git -C "$path" commit -m "seed $name README"
+git -C "$path" push -u origin HEAD
+
+echo ""
+echo "Done. Your private orckits lives at $path (github.com/$user/$name)."
+echo "Next: create/kit scaffolds a run home there (README lifecycle, step 1)."

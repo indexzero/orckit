@@ -1,0 +1,194 @@
+#!/bin/sh
+# kit — scaffold a run home in your private orckits.
+#
+# Copies kit/ into <orckits>/<user>/<repo>/<YYYY>-<MM>-<slug>/, strips the
+# .template infix, leaves the skills/ slot empty, and records provenance in
+# kit.json. See README.md, lifecycle step 1.
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage: create/kit --repo <user>/<repo> --slug <slug> [--orckits DIR] [--yes]
+
+Instantiate the kit templates into a run home (README lifecycle, step 1):
+
+  <orckits>/<user>/<repo>/<YYYY>-<MM>-<slug>/
+
+Every *.template.md loses the .template infix, dispatches/ is copied as-is,
+skills/ is created empty (which skills belong is unique to the run — populate
+it yourself), and kit.json records the orckit sha this run descends from.
+
+Options:
+  --repo <user>/<repo>  the TARGET code repo this run is about
+  --slug <slug>         run slug, kebab-case lowercase (e.g. fix-auth-loop)
+  --orckits DIR         local orckits clone
+                        (default: sibling of this orckit checkout, ../orckits)
+  --yes                 skip all confirmation prompts
+  --help                show this help
+
+Missing --repo/--slug are prompted for via gum.
+EOF
+}
+
+die() { echo "error: $*" >&2; exit 1; }
+
+hash_file() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    echo "error: neither shasum nor sha256sum found" >&2
+    return 1
+  fi
+}
+
+# Confirm with gum unless --yes; die if gum is missing and --yes was not passed.
+confirm() {
+  if [ "$yes" -eq 1 ]; then return 0; fi
+  command -v gum >/dev/null 2>&1 \
+    || die "gum not found — run 'mise install' or pass --yes"
+  gum confirm "$1"
+}
+
+repo=''
+slug=''
+orckits=''
+yes=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --repo) [ $# -ge 2 ] || die "--repo requires a value"; repo=$2; shift 2 ;;
+    --slug) [ $# -ge 2 ] || die "--slug requires a value"; slug=$2; shift 2 ;;
+    --orckits) [ $# -ge 2 ] || die "--orckits requires a value"; orckits=$2; shift 2 ;;
+    --yes) yes=1; shift ;;
+    *) die "unknown argument: $1 (see --help)" ;;
+  esac
+done
+
+command -v git >/dev/null 2>&1 || die "git not found"
+command -v jq >/dev/null 2>&1 || die "jq not found — run 'mise install' first"
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+orckit_root=$(CDPATH='' cd -- "$script_dir/.." && pwd)
+kit_dir=$orckit_root/kit
+[ -d "$kit_dir" ] || die "kit/ not found at $kit_dir — is this an orckit checkout?"
+
+if [ -z "$orckits" ]; then
+  orckits=$(CDPATH='' cd -- "$orckit_root/.." && pwd)/orckits
+fi
+
+# Prompt for anything still missing.
+if [ -z "$repo" ] || [ -z "$slug" ]; then
+  command -v gum >/dev/null 2>&1 \
+    || die "missing --repo/--slug and gum not found — pass the flags or run 'mise install'"
+  if [ -z "$repo" ]; then
+    repo=$(gum input --prompt 'target repo> ' --placeholder '<user>/<repo>')
+  fi
+  if [ -z "$slug" ]; then
+    slug=$(gum input --prompt 'slug> ' --placeholder 'kebab-case-lowercase')
+  fi
+fi
+
+printf '%s' "$repo" | grep -Eq '^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$' \
+  || die "--repo must look like <user>/<repo>, got: '$repo'"
+printf '%s' "$slug" | grep -Eq '^[a-z0-9]+(-[a-z0-9]+)*$' \
+  || die "--slug must be kebab-case lowercase (e.g. fix-auth-loop), got: '$slug'"
+
+[ -d "$orckits" ] || die "orckits dir not found: $orckits (run create/kits-repo first?)"
+git -C "$orckits" rev-parse --git-dir >/dev/null 2>&1 \
+  || die "not a git repo: $orckits — your orckits must be a git clone"
+
+stamp=$(date +%Y-%m)
+run_rel=$repo/$stamp-$slug
+run_home=$orckits/$run_rel
+[ ! -e "$run_home" ] || die "run home already exists: $run_home"
+
+orckit_sha=$(git -C "$orckit_root" rev-parse HEAD)
+orckit_short=$(git -C "$orckit_root" rev-parse --short HEAD)
+orckit_describe=$(git -C "$orckit_root" describe --always --dirty --tags)
+if [ -n "$(git -C "$orckit_root" status --porcelain)" ]; then
+  orckit_dirty=true
+else
+  orckit_dirty=false
+fi
+
+if [ "$orckit_dirty" = true ]; then
+  echo '!!! ================================================================' >&2
+  echo "!!! WARNING: the orckit checkout at $orckit_root is DIRTY." >&2
+  echo "!!! You are instantiating from uncommitted state; kit.json will" >&2
+  echo '!!! record orckit_dirty: true and provenance will not reproduce.' >&2
+  echo '!!! ================================================================' >&2
+fi
+
+echo "Plan:"
+echo "  run home    $run_home"
+echo "  orckit sha  $orckit_sha ($orckit_describe)"
+echo "  files:"
+(cd "$kit_dir" && find . -type f | sed 's|^\./||' | sort) | while IFS= read -r f; do
+  case "$f" in
+    *.template.md) echo "    ${f%.template.md}.md" ;;
+    *) echo "    $f" ;;
+  esac
+done
+echo "    kit.json"
+echo "    skills/            (empty slot — populate it yourself)"
+echo ""
+
+confirm "Scaffold $run_rel?" || die "aborted"
+
+# Copy kit/ verbatim (dispatches/ and its per-dispatch blanks included),
+# then strip the .template infix.
+mkdir -p "$run_home"
+cp -R "$kit_dir/." "$run_home/"
+find "$run_home" -type f -name '*.template.md' | while IFS= read -r f; do
+  mv "$f" "${f%.template.md}.md"
+done
+mkdir -p "$run_home/skills"
+
+# Provenance: kit.json maps every instantiated file to its sha256.
+templates_json=$(
+  cd "$run_home" \
+    && find . -type f | sed 's|^\./||' | sort | while IFS= read -r rel; do
+         printf '%s\t%s\n' "$rel" "$(hash_file "$rel")"
+       done \
+    | jq -Rn '[inputs | split("\t") | { (.[0]): .[1] }] | add // {}'
+)
+jq -n \
+  --arg orckit_sha "$orckit_sha" \
+  --arg orckit_describe "$orckit_describe" \
+  --argjson orckit_dirty "$orckit_dirty" \
+  --arg instantiated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg target_repo "$repo" \
+  --arg slug "$slug" \
+  --argjson templates "$templates_json" \
+  '{
+     orckit_sha: $orckit_sha,
+     orckit_describe: $orckit_describe,
+     orckit_dirty: $orckit_dirty,
+     instantiated_at: $instantiated_at,
+     target_repo: $target_repo,
+     slug: $slug,
+     templates: $templates
+   }' > "$run_home/kit.json"
+
+echo "Scaffolded $run_home"
+echo ""
+
+# Offer to commit the run home in orckits — every event is a commit.
+if confirm "Commit the run home in $orckits?"; then
+  git -C "$orckits" add "$run_home"
+  git -C "$orckits" commit -m "instantiate $run_rel from orckit $orckit_short"
+  echo "Committed in $orckits."
+else
+  echo "Not committed — remember: if it is not in the ledger, it did not happen."
+fi
+
+echo ""
+echo "Next steps:"
+echo "  1. Fill PROBLEM.STATEMENT.md by interviewing the user — spoken intent"
+echo "     becomes a confirmed problem statement before anything else."
+echo "  2. Populate skills/ — which skills belong is unique to this run."
+echo "  3. Adversarial review of the scaffold BEFORE any code work"
+echo "     (lifecycle step 2 — plans have bugs too)."
