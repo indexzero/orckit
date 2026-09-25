@@ -16,7 +16,9 @@ Instantiate the kit templates into a run home (README lifecycle, step 1):
 
 Every *.template.md loses the .template infix, dispatches/ is copied as-is,
 the skills/ slot starts as its index alone (which skills belong is unique to
-the run — populate it yourself), and kit.json (version 2) records the run's provenance and
+the run — populate it yourself), ctx/ starts as its README alone (the slot
+for files a human adopts by hand; diff gates ignore it), and kit.json
+(version 2) records the run's provenance and
 config: the orckit gitHead this run descends from; inputs[] — every source
 template plus this script itself, each with a sha256: digest and a dirty bit
 (does the source differ from its blob at gitHead?); the target as an
