@@ -78,6 +78,26 @@ Prefer the pointer-dispatch protocol. Write the dispatch file first. Then
 send only the pointer text in `kit/dispatches/D-###.md`, which names the
 file and nothing else.
 
+### Transport: native subagents when available, a detached CLI when not
+
+Most agent CLIs can spawn a subagent inside the running session. Use that
+native facility when it meets two conditions. First, it lets you pin the
+model and the context window that RAILS rule 26 names. Second, the
+dispatch can finish inside the life of your session. A native subagent
+gives you a completion signal and no shell mechanics, so it is the better
+default for reviews, research, and short builds.
+
+When either condition fails, dispatch through a detached CLI process
+instead. That is the agent CLI of the harness in non-interactive mode. Start
+it so that it survives the end of your session. Send its output to the
+scratch directory of the dispatch. A long build on a mortal session needs this. A
+window the native facility cannot pin needs this. Record the transport
+per dispatch in the LOG, and poll the result file, because a detached
+process sends no signal.
+
+Either transport sends the same pointer prompt and obeys the same rails.
+The dispatch file, not the transport, is the assignment.
+
 Always add these to a dispatch:
 - the scratch directory, never /tmp
 - the verification before DONE, as the exact commands whose raw output

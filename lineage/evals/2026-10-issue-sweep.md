@@ -33,7 +33,10 @@ the empty porcelain baseline. Waived items: none yet.
    subagent to the CLI with an explicit id, and a live probe proved the CLI
    accepts the window suffix. The rule now says that an alias is not a pin.
    It says that the model is tiered by the defect class the suites cannot
-   see. The per-item table lives in the design doc.
+   see. The per-item table lives in the design doc. The supervisor
+   template gains a Transport section. Use the native subagent facility of
+   the harness when it can pin the window and the dispatch fits the life of
+   the session. Use a detached CLI process when either fails.
 2. **`kit/RAILS.template.md` rule 1: the default branch goes stale in
    silence.** Friction: a prior session in the target repo recorded three
    workers that branched off an eleven-commit-old default branch. Each
