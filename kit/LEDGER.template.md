@@ -93,7 +93,11 @@ changed) from a resume (the context survived).
 ```markdown
 # D-### <phase>: <task> [replaces D-### if applicable]
 
-Model: <pinned, window named>. Dispatched: <date>. [Branch: <branch>.]
+Model: <exact model id>
+Context-window: <positive integer> tokens
+Reasoning: <host setting or not applicable>
+Transport: <native fresh conversation or fresh CLI session>
+Dispatched: <date>. [Branch: <branch>.]
 [What changed vs the replaced dispatch: <the corrected facts. This is where
 stale-memory drift gets documented and killed.>]
 
