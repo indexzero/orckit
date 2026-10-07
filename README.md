@@ -36,7 +36,7 @@ the manual shape.
 
 | Directory | What | Consumed by |
 |---|---|---|
-| `kit/` | The templates to instantiate: problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs, skills index, ctx slot | An agent that instantiates a run home in your orckits |
+| `kit/` | The templates to instantiate: agent entry point, problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs, skills index, ctx slot | An agent that instantiates a run home in your orckits |
 | `skills/` | The skills slot. It is empty on purpose. A kit contains skills, but WHICH skills is unique to the kit, the run, and the user. Fill it at instantiation | Any agent CLI that loads skills |
 | `checks/` | The half of the rules a machine can check, as scripts: porcelain baseline, trailer, footer, ownership subset, model pin, prose | Gate verification. CI |
 | `playbooks/` | Procedures that are neither template nor skill: rebases over squash merges, adversarial review, the CI-green merge bar, the writing rules | Supervisors and humans |
@@ -50,8 +50,8 @@ the manual shape.
    `create/kit` does the copy and the record. The interview stays yours.
 2. **Review the scaffold.** The instantiated plan gets its own adversarial
    review before any code work. Plans have bugs too.
-3. **Run.** A supervisor session adopts `SUPERVISOR.md`, installs `/goal` as
-   its re-entry command, and drives dispatches through gates. Every event
+3. **Run.** A supervisor session adopts `SUPERVISOR.md`, uses `GOAL.md` as
+   its re-entry procedure, and drives dispatches through gates. Every event
    is a commit in orckits. A session can die at any moment. The ledger is
    the only memory.
 4. **Land.** Code merges into the target repo through your own curation. A
@@ -61,6 +61,20 @@ the manual shape.
    numbered diff-shaped amendments, honest costs. Distill it. Sanitize it.
    Bring the amendments here with a `lineage/` entry. This is where the
    evolution of your kit and everyone's kit meet.
+
+## Using Codex
+
+Follow [the Codex playbook](playbooks/codex.md) for launch commands, skill
+discovery, model pins, and fresh reviewer sessions. New run homes include
+an `AGENTS.md` entry point. To resume from a target worktree, tell Codex:
+
+```text
+Read /absolute/path/to/private/run/AGENTS.md and resume this run as supervisor.
+```
+
+The same ledger and dispatch files work with Claude Code. Command wrappers
+and skill installation belong to the host. The run records which host
+capabilities each dispatch requires.
 
 ## Principles
 

@@ -1,17 +1,18 @@
 # GOAL command: template (idempotent re-entry point)
 
-> Sessions are mortal. The command is not. Install it as
-> `.claude/commands/goal.md` or the equivalent, so that a compaction, a
-> stall, or a lost session is recovered by one command. Idempotence is the
+> Sessions are mortal. The procedure is not. Keep it in `GOAL.md` and
+> invoke it by path or through a harness command. Idempotence is the
 > whole point. Read the state. Verify the claims. Advance. Persist. One
 > re-enters the same way every time, and so cannot be lost.
 
 ```markdown
-# /goal: Drive <project> to Completion
+# GOAL: Drive <project> to Completion
 
-**Installation:** save as `.claude/commands/goal.md`. Safe to invoke
-repeatedly: on session start, after compaction, after any stall, from a
-hook.
+**Invocation:** ask the agent to read and follow this file by absolute path.
+In Codex, the run's `AGENTS.md` routes supervisor re-entry here.
+In Claude Code, a `.claude/commands/goal.md` wrapper can point here.
+Keep one authoritative procedure. Re-enter after session loss, compaction,
+or a stall. See orckit's `playbooks/codex.md` for Codex setup.
 
 ## The goal
 
@@ -27,7 +28,7 @@ COMPLETE when, and only when, every line has a verified evidence path in
 
 ## Procedure (every invocation, in order)
 
-1. **Orient.** Read `orchestration/STATE.md` and the tail of `LOG.md`. If
+1. **Orient.** Read `orchestration/STATE.md` and the tail of `orchestration/LOG.md`. If
    they are absent, this is invocation zero: initialize the ledger, adopt
    the supervisor instruction, begin at P1. Do not re-plan. The plan
    exists.
