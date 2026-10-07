@@ -153,8 +153,10 @@ DEVIATIONS entry. Never improvise in silence.
 
 26. Pin every model: build agents and review CLIs. Pin the context window
     with the model. An alias that does not name the window, such as `opus`,
-    is not a pin. If the harness tool cannot pin the window, dispatch
-    through the CLI with an explicit id. Give each pin a fallback ladder
+    is not a pin. Use the native subagent facility of the harness when it
+    can pin the window. If it cannot, dispatch through the agent CLI in
+    non-interactive mode with an explicit id (see SUPERVISOR section 1,
+    Transport). Give each pin a fallback ladder
     and a floor. Tier the model by the defect class the suites cannot see,
     and record the per-item table in the design doc. If a pinned model is
     not available at all, record that in the ledger and BLOCK. Never fall
