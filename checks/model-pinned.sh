@@ -1,30 +1,43 @@
 #!/bin/sh
 # model-pinned.sh <dispatch-dir>
-# Verifies: RAILS rule 26. Every dispatch file names a model with its
-#           context window pinned.
-# Usage:    model-pinned.sh orchestration/dispatches
-# Exit:     0 = every D-*.md has a `Model:` line that names an explicit model
-#           id and a window pin; nonzero = the offending files on stdout.
-#
-# A pin is one of:
-#   - an explicit window suffix on the id, for example `claude-opus-4-8[1m]`
-#   - a model whose window is 1M by default, listed in WIDE_BY_DEFAULT below
-# An alias such as `opus` or `sonnet` is not a pin.
+# Verifies the declaration format for RAILS rule 26, not model availability.
+# Accepts an explicit versioned model id plus Context-window: N tokens,
+# or a supported legacy suffix such as model-v1[1m]. No provider allowlist.
+# Only numbered dispatch prompts are checked, never results or companions.
 set -eu
-dir="$1"
-WIDE_BY_DEFAULT='claude-fable-5-1|claude-fable-5|claude-opus-5-5|claude-opus-5|claude-sonnet-5-5|claude-sonnet-5'
+[ "$#" -eq 1 ] && [ -d "$1" ] || {
+  echo 'usage: model-pinned.sh <existing-dispatch-dir>' >&2
+  exit 2
+}
 bad=0
-for f in "$dir"/D-*.md; do
-  [ -e "$f" ] || continue
-  case "$f" in *.result.*) continue ;; esac
-  line=$(grep -m1 '^Model:' "$f" || true)
-  if [ -z "$line" ]; then
-    echo "no Model line: $f"; bad=1; continue
+for f in "$1"/D-*.md; do
+  [ -f "$f" ] || continue
+  printf '%s\n' "${f##*/}" | grep -Eq '^D-[0-9]+\.md$' || continue
+  if ! awk -v file="$f" '
+    /^----8<----/ || /^---[[:space:]]*$/ { exit }
+    /^Model:/ {
+      models++
+      model = $0
+      sub(/^Model:[[:space:]]*/, "", model)
+      sub(/[[:space:]].*$/, "", model)
+    }
+    /^Context-window:/ {
+      windows++
+      window = $0
+    }
+    END {
+      suffix = model ~ /\[[1-9][0-9]*[mk]\]$/
+      sub(/\[[1-9][0-9]*[mk]\]$/, "", model)
+      # This is syntax validation. The host must verify the actual id.
+      valid_model = models == 1 && model ~ /^[[:alnum:]][[:alnum:]_.\/:+-]*[[:alnum:]]$/ && model ~ /[0-9]/ && model ~ /[[:alpha:]]/ && model !~ /(^|[-_.\/])(latest|auto|default)($|[-_.\/])/
+      valid_window = windows == 1 && window ~ /^Context-window:[[:space:]]*[1-9][0-9]* tokens[[:space:]]*$/
+      if (!valid_model || (windows ? !valid_window : !suffix)) {
+        print "model or context window not pinned: " file
+        exit 1
+      }
+    }
+  ' "$f"; then
+    bad=1
   fi
-  if printf '%s' "$line" | grep -qE '\[[0-9]+[mk]\]'; then continue; fi
-  if printf '%s' "$line" | grep -qE "($WIDE_BY_DEFAULT)"; then continue; fi
-  echo "model not pinned to a context window: $f"
-  echo "  $line"
-  bad=1
 done
 exit "$bad"

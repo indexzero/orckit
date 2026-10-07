@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add a run `AGENTS.md` entry point and a Codex setup playbook.
+- Make re-entry, skill loading, and fresh dispatch setup explicit across hosts.
+- Accept provider-neutral model and context declarations. Remove implicit
+  Claude window defaults. Exclude dispatch companions from the model check.
+  Add offline regression coverage.
+
 ## 0.1.0 (2026-08)
 
 - `kit/`: the run templates — problem statement, rails, supervisor, goal,

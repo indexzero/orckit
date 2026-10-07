@@ -18,8 +18,15 @@ A check that fails is a gate failure, not a conversation.
 | `trailer-present.sh <repo> <range>` | Every commit in the range ends with the attribution trailer | `kit/RAILS.template.md` rule 13 |
 | `no-ai-footer.sh <pr-number>` | The PR body carries no AI-attribution footer | `kit/RAILS.template.md` rule 14 |
 | `ownership-subset.sh <repo> <base> <allowed-file...>` | The diff is a subset of the ownership list of the dispatch | `kit/dispatches/D-###.md` Scope |
-| `model-pinned.sh <dispatch-dir>` | Every dispatch names a model with its context window pinned | `kit/RAILS.template.md` rule 26 |
+| `model-pinned.sh <dispatch-dir>` | Every numbered dispatch declares a versioned model id and an explicit context window | `kit/RAILS.template.md` rule 26 |
 | `prose-lint.sh <file...>` | Prose obeys the writing rules: no semicolons, no dash punctuation, no "should", no contractions, sentences within the word limit | `kit/RAILS.template.md` rule 27, `playbooks/writing-rules.md` |
+
+Run `sh checks/model-pinned.test.sh` for the offline model-pin regression cases.
+The model check accepts `Model: <versioned-id>` with
+`Context-window: <positive integer> tokens`, or a supported window suffix.
+It checks declarations before the dispatch separator. Result files, companion
+artifacts, and unnumbered template blanks are excluded. The supervisor must
+verify that the host can actually provide the declared model and capacity.
 
 ## Run checks (live in your run home, not here)
 

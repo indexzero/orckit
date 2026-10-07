@@ -38,7 +38,11 @@
 # D-### <kind>: <one-line task> [replaces D-###]
 
 Kind/shortname: <research|review|closure|build|fix|verify|...>
-Model: <pinned id with the window named> · Dispatched: <ISO8601> · <synchronous|background>
+Model: <exact model id>
+Context-window: <positive integer> tokens
+Reasoning: <host setting or not applicable>
+Transport: <native fresh conversation or fresh CLI session>
+Dispatched: <ISO8601> · <synchronous|background>
 [What changed vs D-### (replaced): <the corrected facts, verbatim where possible>]
 [RETRO: reconstructed from the dispatch call on <date>. Not covered by the
  verbatim-by-construction guarantee.]
