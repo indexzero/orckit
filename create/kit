@@ -1,8 +1,8 @@
 #!/bin/sh
 # kit — scaffold a run home in your private orckits.
 #
-# Copies kit/ into <orckits>/<user>/<repo>/<YYYY>-<MM>-<slug>/, strips the
-# .template infix, leaves the skills/ slot empty, and records provenance in
+# Composes kit/ into <orckits>/<user>/<repo>/<YYYY>-<MM>-<slug>/, strips the
+# .template infix, preserves fragment sources, and records provenance in
 # kit.json. See README.md, lifecycle step 1.
 set -eu
 
@@ -14,13 +14,15 @@ Instantiate the kit templates into a run home (README lifecycle, step 1):
 
   <orckits>/<owner>/<repo>/<YYYY>-<MM>-<slug>/
 
-Every *.template.md loses the .template infix, dispatches/ is copied as-is,
-the skills/ slot starts as its index alone (which skills belong is unique to
+Every *.template.md loses the .template infix. Markdown recipes are rendered
+through kit.example.json; fragment sources are retained under fragments/.
+Dispatch templates are rendered with their existing filenames.
+The skills/ slot starts as its index alone (which skills belong is unique to
 the run — populate it yourself), ctx/ starts as its README alone (the slot
 for files a human adopts by hand; diff gates ignore it), and kit.json
 (version 2) records the run's provenance and
 config: the orckit gitHead this run descends from; inputs[] — every source
-template plus this script itself, each with a sha256: digest and a dirty bit
+template, fragment, manifest, and renderer, each with a sha256: digest and a dirty bit
 (does the source differ from its blob at gitHead?); the target as an
 npm-repository-style object (type/url, plus directory and the target's own
 gitHead when known); the eval axes this run will be graded on; and whether
@@ -101,6 +103,9 @@ done
 
 command -v git >/dev/null 2>&1 || die "git not found"
 command -v jq >/dev/null 2>&1 || die "jq not found — run 'mise install' first"
+command -v python3 >/dev/null 2>&1 || die "python3 not found — composition requires Python 3.9 or later"
+python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' \
+  || die "composition requires Python 3.9 or later"
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 orckit_root=$(CDPATH='' cd -- "$script_dir/.." && pwd)
@@ -176,11 +181,9 @@ git_head=$(git -C "$orckit_root" rev-parse HEAD)
 orckit_short=$(git -C "$orckit_root" rev-parse --short HEAD)
 describe=$(git -C "$orckit_root" describe --always --tags)
 
-# inputs[]: the run's x-values — every kit/ source template plus the
-# transform itself (this script), each digested (sha256 over raw bytes) and
-# marked dirty when the source differs from its blob at gitHead. Destination
-# names are derivable (strip .template — the transform is pinned by gitHead),
-# so they are not recorded; neither is whole-checkout dirtiness (any .dirty).
+# inputs[] records every recipe, fragment, binding, and composition tool.
+# Each digest covers raw source bytes. Dirty flags compare with gitHead.
+# The pinned transform determines the rendered output names and content.
 input_line() {
   in_src=$1
   in_sha=$(hash_file "$orckit_root/$in_src")
@@ -196,6 +199,8 @@ inputs_json=$(
     (cd "$kit_dir" && find . -type f | sed 's|^\./||' | sort) \
       | while IFS= read -r src; do input_line "kit/$src"; done
     input_line create/kit
+    input_line create/compose.py
+    input_line kit.example.json
   } | jq -Rn '[inputs | split("\t")
                | {source: .[0], digest: .[1], dirty: (.[2] == "true")}]'
 )
@@ -228,13 +233,14 @@ echo ""
 
 confirm "Scaffold $run_rel?" || die "aborted"
 
-# Copy kit/ verbatim (dispatches/ and its per-dispatch blanks included),
-# then strip the .template infix.
+# Resolve every recipe before creating the run home. Failed composition
+# leaves no partial scaffold. Retain the source fragments beside snapshots.
+composition_stage=$(mktemp -d)
+trap 'rm -rf "$composition_stage"' EXIT
+python3 "$script_dir/compose.py" --manifest "$orckit_root/kit.example.json" \
+  --output-dir "$composition_stage"
 mkdir -p "$run_home"
-cp -R "$kit_dir/." "$run_home/"
-find "$run_home" -type f -name '*.template.md' | while IFS= read -r f; do
-  mv "$f" "${f%.template.md}.md"
-done
+cp -R "$composition_stage/." "$run_home/"
 mkdir -p "$run_home/skills"
 
 # Provenance + run-config, consolidated in kit.json (version 2): inputs[] is
@@ -259,6 +265,9 @@ jq -n \
   --argjson inputs "$inputs_json" \
   --argjson axes "$axes_json" \
   --argjson lineage_digests "$lineage_digests" \
+  --argjson bindings "$(jq '{charter, workflow, delivery, trust, rules}
+    | walk(if type == "string" then ltrimstr("kit/") else . end)' \
+    "$orckit_root/kit.example.json")" \
   '{
      version: 2,
      gitHead: $git_head,
@@ -271,7 +280,7 @@ jq -n \
      inputs: $inputs,
      evals: { file: "EVALS.md", axes: $axes },
      lineage: { includeInputDigests: $lineage_digests }
-   }' > "$run_home/kit.json"
+   } + $bindings' > "$run_home/kit.json"
 
 echo "Scaffolded $run_home"
 echo ""

@@ -35,13 +35,8 @@ back in silence.
    the repros of the reviewer yourself. A green suite proves the tests pass.
    It does not prove the finding is dead. A gate closed on the word of the
    fixer sometimes holds. Luck is not a rule.
-4. **Bounded loops.** Every remediation loop has a counter in the ledger.
-   The ceiling is 3. On the third failure, write a BLOCKED or QUESTIONS
-   entry with the finding that did not die and the three attempts. Then
-   stop that thread.
-5. **Severity gates.** A blocker always blocks. A major needs a recorded
-   disposition: fixed, or waived with a justification and a blank human
-   sign-off line. Minors and nits go to BACKLOG. They do not gate.
+@delivery.blocking_decisions_and_escalation
+@charter.human_review_and_remediation_policy
 6. **Assumptions never block.** If an item is askable, make the best
    assumption. Record it in QUESTIONS.md with the impact if wrong and the
    way to override. Continue.
@@ -50,104 +45,15 @@ back in silence.
    conflict and the resolution, run the verification, execute, pause. A
    batch is for read-only checks and isolated-worktree builds. A loop over
    shared refs drops proof steps in silence and ships resolutions unshown.
-8. **Lead with the blast radius.** A decision request to the human opens
-   with the bounded list of consequences a user can observe. The list
-   says what changes, for whom, and how likely. It ends with "that is the
-   whole list". Then comes what is gained.
-   Mechanism, severity labels, and item numbers are an appendix. The tell
-   that it is backwards: the first sentence has a taxonomy word instead of
-   a thing a user can see, click, or hear.
+@fragments/charter/human-decision-request.md
 9. **Rules a machine can check run as checks.** Tag every gate rule as
    lint or review (see orckit `checks/`). Run the lint half as scripts at
    the gate. Spend agent and reviewer attention only on judgment rules.
 
-## 1. Dispatch header (prepend to every subagent prompt, verbatim, filled in)
-
-    You are a subagent under a supervisor. Your entire assignment is this
-    prompt plus the artifact paths listed below. Work only within scope.
-    Write your complete output to the result path given; your final message
-    must contain only that path and a one-line status (DONE / FAILED: reason).
-    Do not ask the supervisor questions; if genuinely blocked, write the
-    question into your result file under a BLOCKED heading and exit FAILED.
-
-    Assignment: <task, one paragraph>
-    Inputs:     <artifact paths, each annotated read-only/modify>
-    Result:     orchestration/dispatches/<D-id>.result.<shortname>.md
-
-Prefer the pointer-dispatch protocol. Write the dispatch file first. Then
-send only the pointer text in `kit/dispatches/D-###.md`, which names the
-file and nothing else.
-
-### Transport: native subagents when available, a detached CLI when not
-
-Some hosts can spawn a subagent inside the running session. Use that
-facility when it can select the pinned model and meet the verified context
-capacity in RAILS rule 26. It must also support a fresh conversation,
-without inherited authoring history. The dispatch must fit the session lifetime.
-A native subagent
-gives you a completion signal and no shell mechanics, so it is the better
-default for reviews, research, and short builds.
-
-When these conditions fail, use a fresh non-interactive CLI session if available.
-For work that must outlive the supervisor, use a process manager with verified
-lifetime guarantees. A background shell job alone does not establish persistence.
-Send process output to the scratch directory of the dispatch.
-Record the transport and process or agent identifier in the LOG.
-Poll the result and process status when no completion signal exists.
-If no available transport meets the requirements, record BLOCKED.
-
-For Codex native dispatch, select `fork_turns="none"` when that control exists.
-Pass only the dispatch pointer. An instruction to forget inherited history
-does not create a fresh reviewer. See orckit's `playbooks/codex.md`.
-
-Either transport sends the same pointer prompt and obeys the same rails.
-The dispatch file, not the transport, is the assignment.
-
-Always add these to a dispatch:
-- the scratch directory, never /tmp
-- the verification before DONE, as the exact commands whose raw output
-  must appear in the report
-- the git rules: atomic commits, no AI attribution footer
-- every standing user directive, verbatim
-
-## 2. Pipeline (parameterize it, and delete the gates the project does not earn)
-
-- **P1 design review.** A fresh adversarial reviewer attacks the design
-  doc. Gate G1: zero open blockers. Remediation loop ceiling 3. Pin
-  DESIGN-FINAL.
-- **P2 build.** One dispatch per component, in dependency order. Each gets
-  DESIGN-FINAL and the interfaces of the built components (READMEs, not
-  transcripts). Embed VERIFIED FACTS about external dependencies in the
-  dispatch. Fetch first. Memory of external tools drifts, and dispatches
-  die of it. Gate G2: clean install and the suite green, run again by the
-  supervisor with its own hands.
-- **P3 adversarial code review.** A fresh reviewer, generous runtime, a
-  findings file. Gate G3: zero open blockers. Remediation loop ceiling 3.
-  Each fix is verified by a named regression and the full suite. Reviewers
-  run against their OWN checkout, or their suite runs are serialized with
-  the author's. A reviewer that runs e2e in the live worktree of the author
-  produces phantom flakes and scratch-file contamination. When a repro or a
-  mutation check is run again at the gate, first PROVE that the mutation
-  applied (non-empty `git diff --stat`). A green suite over an unapplied
-  mutant proves nothing.
-- **P4 final verification.** An independent verifier, a clean clone, raw
-  output. Gate G4, DONE: the verifier is green and the DELIVERY notes are
-  written, INCLUDING the loop counters spent and the waived majors. The
-  cost of convergence is part of the report.
-
-### A recorded shape: the issue sweep
-
-Some work is N small, independent, pre-specified items. An example is a
-set of issues that each carry acceptance criteria, verification steps, and
-a file list. For that work the pipeline scales down like this. The items ARE the designs,
-so P1 becomes a re-anchor step inside each build dispatch (see
-`kit/dispatches/D-###.md`, STEP 1). CI on the PR head is the clean
-environment, so P4 becomes "all jobs green on the current head". Tracks
-group by file contention. Items in one track run in sequence on stacked
-branches, each worktree based on the branch below it. A launch gate is
-"the PR below is open". Record the stack as a table in STATE.md. Record
-the scaling decision in section 1 of the instantiated supervisor.
-
+@workflow.individual_work_assignment
+@rules.agent_execution_transport
+@workflow.execution_workflow_and_process_scale
+@workflow.workflow_selection
 ## 3. Anti-patterns (hard prohibitions)
 
 - Do not do subagent work inline because it is quick. The one exception is

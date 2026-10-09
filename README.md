@@ -36,7 +36,7 @@ the manual shape.
 
 | Directory | What | Consumed by |
 |---|---|---|
-| `kit/` | The templates to instantiate: agent entry point, problem statement, rails, supervisor, goal (re-entry), ledger, questions, deviations, evals, design doc, dispatch pairs, skills index, ctx slot | An agent that instantiates a run home in your orckits |
+| `kit/` | Markdown recipes for the run templates, with reusable content under `fragments/{charter,workflow,delivery,trust,rules}/` | `create/kit` composes these into a run home |
 | `skills/` | The skills slot. It is empty on purpose. A kit contains skills, but WHICH skills is unique to the kit, the run, and the user. Fill it at instantiation | Any agent CLI that loads skills |
 | `checks/` | The half of the rules a machine can check, as scripts: porcelain baseline, trailer, footer, ownership subset, model pin, prose | Gate verification. CI |
 | `playbooks/` | Procedures that are neither template nor skill: rebases over squash merges, adversarial review, the CI-green merge bar, the writing rules | Supervisors and humans |
@@ -44,10 +44,11 @@ the manual shape.
 
 ## The lifecycle
 
-1. **Instantiate.** In your private orckits, an agent copies `kit/` into
+1. **Instantiate.** In your private orckits, an agent composes `kit/` into
    `<user>/<repo>/<YYYY>-<MM>-<slug>/`. It records the orckit commit sha it
    came from. It fills `PROBLEM.STATEMENT.md` by interviewing you.
-   `create/kit` does the copy and the record. The interview stays yours.
+   `create/kit` renders the templates and records their source inputs.
+   The interview stays yours.
 2. **Review the scaffold.** The instantiated plan gets its own adversarial
    review before any code work. Plans have bugs too.
 3. **Run.** A supervisor session adopts `SUPERVISOR.md`, uses `GOAL.md` as
@@ -61,6 +62,58 @@ the manual shape.
    numbered diff-shaped amendments, honest costs. Distill it. Sanitize it.
    Bring the amendments here with a `lineage/` entry. This is where the
    evolution of your kit and everyone's kit meet.
+
+## Composing a kit
+
+[kit.example.json](kit.example.json) binds responsibilities to Markdown
+fragments. Its five groups follow [CONSTITUTION.md](CONSTITUTION.md).
+Each binding is a relative file path or an ordered list of paths.
+Paths in the manifest resolve from the manifest's directory.
+
+The current templates are composition recipes. For example,
+`kit/dispatches/D-###.md` contains `@trust.supervisor_ledger`, and
+`kit/dispatches/D-###.result.md` contains `@trust.delivery_ledger`.
+The referenced formats belong to their respective ledgers. Policy fragments
+define the instructions that those records capture during execution.
+
+Render a recipe or validate the bindings with Python 3.9 or later:
+
+```sh
+python3 create/compose.py kit/RAILS.template.md
+python3 create/compose.py --check
+python3 checks/composition.test.py
+```
+
+A standalone `@charter.completion_contract` line includes the selected
+fragment. A standalone `@./cost-analysis.md` line includes a physical file
+relative to the containing document. Both forms can nest. Only the five
+constitution groups are responsibility namespaces. Indented references and
+`@@` lines remain literal. References are textual directives, including
+inside the Markdown fences used by the existing templates.
+
+The renderer preserves inclusion order and permits shared fragments in
+different branches. Missing bindings, missing files, cycles, and references
+outside the manifest directory fail with a source location. It does not
+substitute placeholders or execute workflow steps.
+
+Change a binding to select another fragment. Workflow bindings can select
+the same fragments as Rules defaults or supply a different file. Bindings
+are explicit. The renderer does not infer inheritance or resolve conflicting
+policies. Some legacy recipes use physical references to preserve the
+placement of parts of a responsibility. Those references select that file
+directly and do not follow a replacement manifest binding.
+
+`create/kit` requires Git, jq, and Python 3.9 or later. Interactive use also
+requires gum. It renders the recipes before creating the run home, retains
+fragment sources, and records the manifest and renderer in provenance.
+The generated `kit.json` includes bindings relative to the run home.
+Rendered templates are snapshots: editing source fragments later does not
+rewrite existing run instructions or issued dispatches.
+
+The initial extraction retains the current instructions and numbered rules.
+The rendered content was compared against all 14 existing templates.
+Identity, provenance, dependency, and backlog fragments also expose concerns
+that previously appeared only in the generator or in layout descriptions.
 
 ## Using Codex
 
@@ -112,8 +165,8 @@ capabilities each dispatch requires.
 Lessons flow in through `lineage/`. The APIs, that is file names, section
 shapes, and the dispatch protocol, are stabilizing but not stable. Expect
 them to move. When your runs prove a better shape, move it with us. The kit
-assumes git, a POSIX shell, and an agent CLI that can read files and run
-commands. Nothing else.
+uses git, a POSIX shell, and an agent CLI that can read files and run
+commands. Scaffolding dependencies are listed under Composing a kit.
 
 ## License
 

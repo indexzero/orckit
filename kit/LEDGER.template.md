@@ -42,52 +42,16 @@ orchestration/
 **Intent contract:** PROBLEM.STATEMENT.md (wins over recollection)
 **Subagent model:** <pinned, with the context window named>
 
-## Phase
-- **Current phase:** <P#/COMPLETE/BLOCKED>
-- **Next action:** <one imperative sentence. This is the resume point.>
-- **Standing user directives:** <bulleted, near verbatim>
-
-## Gates
-| Gate | Status | Evidence |
-|---|---|---|
-| G1 (<definition>) | PASS/FAIL/— | <result path and the quoted "VERDICT: ..." line> |
-
-## Loop counters (ceiling 3 each)
-- <loop name>: <n>/3 <notes>
-
-## Pinned decisions
-- <DECISION-FINAL artifacts by exact path. Scaling decisions. Anything a
-  new supervisor must not re-litigate.>
-
-## Branch stack
-| Track | Branch | Base | PR |
-|---|---|---|---|
-| <track> | <branch> | <default branch, or the branch below it> | <number, or —> |
-
-## Dispatch registry
-| ID | Phase | Inputs | Result | Status |
-|---|---|---|---|---|
-| D-001 | P1 | <paths> | dispatches/D-001.result.<shortname>.md | PLANNED/RUNNING/DONE/CANCELLED. <one-line outcome> |
+@delivery.current_execution_state
+@trust.durable_decisions
+@delivery.active_work_assignments_and_their_status
 ```
 
 The status vocabulary: `PLANNED` is a dispatch file written before the
 run began, for the owner to read, and not yet sent. `RUNNING`, `DONE`, and
 `CANCELLED` mean what they say.
 
-## LOG.md line grammar (append-only, newest last)
-
-```
-- <ISO8601> <EVENT> <detail with artifact paths>
-```
-
-The event vocabulary is small and fixed: `INVOCATION-ZERO`, `DISPATCH`,
-`RESULT`, `GATE`, `DECISION`, `INCIDENT` (a stall or API error, and how
-the run resumed), `USER` (a mid-run directive received), `CANCELLED`,
-`PREP` (context-hygiene extraction), `ANNOUNCE`, `NOTE`, `ENV` (toolchain
-versions), `BRANCH`, `PR`. The INCIDENT and resume-in-place entries carry
-load. They are how a future reader tells a re-dispatch (the prompt
-changed) from a resume (the context survived).
-
+@trust.event_history
 ## dispatches/D-###.md skeleton
 
 ```markdown
