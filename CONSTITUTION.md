@@ -8,9 +8,13 @@
       - Do you have any questions or concerns about how I have specified how will work together?
       - All else being equal, when you are unsure about something how will we work together? And what counts as done
       - Does the work fit any pre-existing examples of successful delivery that can serve as additional guardrails?
-   - Context Scopes
+   - Parameters & Output Templates
       - Initial Human-supplied context & scope
       - Distilled intent, source requirements & acceptance criteria
+      - Technical design and approach selection
+      - Performance, cost, and technical validation
+      - Completion contract
+   - Static Context
       - Human Review and Remediation Policy
 - **Workflow – What is the order work gets done, and what must be available for each step?**
    - Questions
@@ -51,6 +55,8 @@
       - Run identity & output target: target repository or artifact, relevant subdirectory, and starting revision
       - Kit provenance
       - Individual work result and evidence
+      - Durable decisions
+      - Event history
       - Supervisor dispositions
       - Delivery & escalation record
       - Kit evaluation and improvement
