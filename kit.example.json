@@ -1,0 +1,180 @@
+{
+  "description": "Responsibility-to-file mapping for the current kit template. Paths are relative to this repository root and identify existing source files, not generated run artifacts. This example does not change the generated kit.json format.",
+  "notes": {
+    "generated_records": "create/kit generates kit.json. LEDGER.template.md defines STATE.md, LOG.md, BACKLOG.md, BLOCKED.md, and the dispatch registry. Dispatch templates define individual assignments, results, and companion records.",
+    "content_dependencies": "The current content dependency graph is defined by the supervisor pipeline; it has no dedicated graph file. Dispatch records capture the inputs supplied to an assignment. Active assignment status is recorded separately through the ledger.",
+    "delivery_record": "GOAL.template.md and SUPERVISOR.template.md require delivery notes but do not fix their filename.",
+    "artifact_lifecycle_and_ownership": "Covered by Operational policy in TECHNICAL.DESIGN.template.md, mapped under technical design and approach selection. Its separate placement in the constitution remains open.",
+    "dependencies": "The current kit has no dedicated tool or system dependency inventory. RAILS.template.md provides worktree and bootstrap requirements; SUPERVISOR.template.md provides execution transport requirements. Instantiation must supply project-specific dependencies.",
+    "human_review": "The problem statement describes how the human will review the work. Supervisor severity gates provide human sign-off rules. Standing directives and the supervisor govern remediation.",
+    "ledger_ownership": "Dispatch records belong to trust.supervisor_ledger. Result records belong to trust.delivery_ledger. Policies and workflow requirements referenced or recorded in them remain mapped to their governing files. The supervisor ledger can reference results without owning their file mapping.",
+    "human_escalation": "RAILS.template.md defines decisions reserved for the owner. SUPERVISOR.template.md defines bounded remediation and how to present decision requests. Delivery tracks blockers; Trust retains the resulting records."
+  },
+  "charter": {
+    "parameters_and_output_templates": {
+      "initial_human_supplied_context_and_scope": [
+        "kit/ctx/README.template.md",
+        "kit/PROBLEM.STATEMENT.template.md"
+      ],
+      "distilled_intent_source_requirements_and_acceptance_criteria": [
+        "kit/PROBLEM.STATEMENT.template.md"
+      ],
+      "technical_design_and_approach_selection": [
+        "kit/TECHNICAL.DESIGN.template.md"
+      ],
+      "performance_cost_and_technical_validation": [
+        "kit/TECHNICAL.DESIGN.template.md"
+      ],
+      "completion_contract": [
+        "kit/GOAL.template.md"
+      ]
+    },
+    "static_context": {
+      "human_review_and_remediation_policy": [
+        "kit/PROBLEM.STATEMENT.template.md",
+        "kit/SUPERVISOR.template.md",
+        "kit/RAILS.template.md"
+      ],
+      "human_escalation_policy": [
+        "kit/RAILS.template.md",
+        "kit/SUPERVISOR.template.md"
+      ]
+    }
+  },
+  "workflow": {
+    "workflow_selection": [
+      "kit/SUPERVISOR.template.md"
+    ],
+    "per_phase": {
+      "mechanics": {
+        "agent_entry_point": [
+          "kit/AGENTS.template.md"
+        ],
+        "workspace_preparation_and_isolation": [
+          "kit/RAILS.template.md"
+        ],
+        "agent_execution_transport": [
+          "kit/SUPERVISOR.template.md"
+        ]
+      },
+      "skill_dependencies": [
+        "kit/skills/README.template.md"
+      ],
+      "model_requirements_and_selection": [
+        "kit/TECHNICAL.DESIGN.template.md"
+      ],
+      "artifacts_and_dependency_registry": [
+        "kit/SUPERVISOR.template.md"
+      ]
+    },
+    "execution_workflow_and_process_scale": [
+      "kit/SUPERVISOR.template.md"
+    ],
+    "individual_work_assignment": [
+      "kit/SUPERVISOR.template.md"
+    ],
+    "resumption_and_recovery_procedure": [
+      "kit/GOAL.template.md"
+    ],
+    "deferred_work": [
+      "kit/LEDGER.template.md"
+    ]
+  },
+  "delivery": {
+    "current_execution_state": [
+      "kit/LEDGER.template.md"
+    ],
+    "active_work_assignments_and_their_status": [
+      "kit/LEDGER.template.md"
+    ],
+    "build_and_behavior_preservation_policy": [
+      "kit/RAILS.template.md"
+    ],
+    "revision_control_integration_and_delivery_policy": [
+      "kit/RAILS.template.md"
+    ],
+    "adversarial_review_and_remediation_policy": [
+      "kit/RAILS.template.md",
+      "kit/SUPERVISOR.template.md"
+    ],
+    "assumptions_and_unanswered_questions": [
+      "kit/QUESTIONS.template.md"
+    ],
+    "deviations_from_any_agreement": [
+      "kit/DEVIATIONS.template.md"
+    ],
+    "blocking_decisions_and_escalation": [
+      "kit/LEDGER.template.md",
+      "kit/SUPERVISOR.template.md"
+    ]
+  },
+  "trust": {
+    "run_identity_and_output_target": [
+      "create/kit"
+    ],
+    "kit_provenance": [
+      "create/kit"
+    ],
+    "supervisor_ledger": [
+      "kit/dispatches/D-###.md"
+    ],
+    "delivery_ledger": [
+      "kit/dispatches/D-###.result.md"
+    ],
+    "durable_decisions": [
+      "kit/LEDGER.template.md"
+    ],
+    "event_history": [
+      "kit/LEDGER.template.md"
+    ],
+    "kit_evaluation_and_improvement": [
+      "kit/EVALS.template.md"
+    ],
+    "preserved_working_evidence": [
+      "kit/RAILS.template.md"
+    ]
+  },
+  "rules": {
+    "global_workflow_defaults": {
+      "information_access_boundaries": [
+        "kit/RAILS.template.md",
+        "kit/SUPERVISOR.template.md"
+      ],
+      "mechanics": {
+        "agent_entry_point": [
+          "kit/AGENTS.template.md"
+        ],
+        "workspace_preparation_and_isolation": [
+          "kit/RAILS.template.md"
+        ],
+        "agent_execution_transport": [
+          "kit/SUPERVISOR.template.md"
+        ]
+      },
+      "model_requirements_and_selection": [
+        "kit/RAILS.template.md"
+      ],
+      "skill_dependencies": [
+        "kit/skills/README.template.md"
+      ],
+      "tool_dependencies": [
+        "kit/RAILS.template.md",
+        "kit/SUPERVISOR.template.md"
+      ],
+      "system_dependencies": [
+        "kit/RAILS.template.md"
+      ],
+      "artifacts_and_dependency_registry": [
+        "kit/SUPERVISOR.template.md",
+        "kit/RAILS.template.md"
+      ]
+    },
+    "standing_rules_and_their_amendments": [
+      "kit/RAILS.template.md"
+    ],
+    "writing_conventions": [
+      "kit/RAILS.template.md",
+      "playbooks/writing-rules.md"
+    ]
+  }
+}

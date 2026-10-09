@@ -16,6 +16,7 @@
       - Completion contract
    - Static Context
       - Human Review and Remediation Policy
+      - Human Escalation Policy
 - **Workflow – What is the order work gets done, and what must be available for each step?**
    - Questions
       - What must you do before starting work? And how do you clean up?
@@ -40,6 +41,7 @@
       - What do you do when you must make an assumption alone or deviate from our agreement(s)?
    - Context Scopes
       - Current execution state
+      - Active work assignments & their status
       - Build and behavior-preservation policy
       - Revision control integration and delivery policy (git, jj, etc.)
       - Adversarial review and remediation policy
@@ -54,11 +56,10 @@
    - Context Scopes
       - Run identity & output target: target repository or artifact, relevant subdirectory, and starting revision
       - Kit provenance
-      - Individual work result and evidence
+      - Supervisor Ledger: supervisor dispatches, subagent results
+      - Delivery Ledger: adversarial review evidence, work results, issues closed, PRs opened
       - Durable decisions
       - Event history
-      - Supervisor dispositions
-      - Delivery & escalation record
       - Kit evaluation and improvement
       - Preserved working evidence
 - **Rules – What cross-cutting agreements or standards must govern the work & how it is accomplished?**
