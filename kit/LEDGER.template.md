@@ -59,6 +59,11 @@ orchestration/
 - <DECISION-FINAL artifacts by exact path. Scaling decisions. Anything a
   new supervisor must not re-litigate.>
 
+## Deliverables
+| PR | Issue | State |
+|---|---|---|
+| <#n, or —> | <#n> | <what the row waits on next: a gate, an agent, a rebase, the owner; or MERGED <sha>> |
+
 ## Branch stack
 | Track | Branch | Base | PR |
 |---|---|---|---|

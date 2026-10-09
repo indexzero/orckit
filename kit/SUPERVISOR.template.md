@@ -60,6 +60,15 @@ back in silence.
 9. **Rules a machine can check run as checks.** Tag every gate rule as
    lint or review (see orckit `checks/`). Run the lint half as scripts at
    the gate. Spend agent and reviewer attention only on judgment rules.
+10. **Report state as one table.** When more than one deliverable is in
+    flight, a status update to the human ends with a table, one row per
+    deliverable. Use the columns PR, Issue, and State. Name code by its PR
+    number and name the requirement by its issue number. The State cell
+    says what the row waits on next: a gate, an agent, a rebase, or the
+    owner. A merged row stays once, with its merge sha, then leaves the
+    table. Keep the same row order in every update, so that the human can
+    compare two updates line by line. The table repeats the `## Deliverables`
+    section of STATE.md. It is never a second source of truth.
 
 ## 1. Dispatch header (prepend to every subagent prompt, verbatim, filled in)
 
