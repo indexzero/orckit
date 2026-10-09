@@ -1,0 +1,77 @@
+
+
+- **Charter – Foundational context. Read me first**
+   - Questions
+      - What are we trying to achieve? For who? Why?
+      - What are the operating principles & working agreements between us?
+      - What are the operating principles & working agreements between you & your team?
+      - Do you have any questions or concerns about how I have specified how will work together?
+      - All else being equal, when you are unsure about something how will we work together? And what counts as done
+      - Does the work fit any pre-existing examples of successful delivery that can serve as additional guardrails?
+   - Context Scopes
+      - Initial Human-supplied context & scope
+      - Distilled intent, source requirements & acceptance criteria
+      - Human Review and Remediation Policy
+- **Workflow – What is the order work gets done, and what must be available for each step?**
+   - Questions
+      - What must you do before starting work? And how do you clean up?
+   - Context Scopes
+      - Workflow selection (defines phases)
+      - Per phase
+         - Mechanics
+            - Agent entry point
+            - Workspace preparation and isolation
+            - Agent execution transport
+         - Skill dependencies
+         - Model requirements & selection
+         - Artifacts and dependency registry (e.g. starting from two sentences but cannot code until PLAN.md exists)
+      - Execution workflow and process scale
+      - Individual work assignment
+      - Resumption and recovery procedure
+      - Deferred work
+- **Delivery – How will you deliver the work from end-to-end?**
+   - Questions
+      - How will you track progress for others to see?
+      - How will we agree together that the work is done?
+      - What do you do when you must make an assumption alone or deviate from our agreement(s)?
+   - Context Scopes
+      - Current execution state
+      - Build and behavior-preservation policy
+      - Revision control integration and delivery policy (git, jj, etc.)
+      - Adversarial review and remediation policy
+      - Assumptions and unanswered questions
+      - Deviations from any agreement in any other file
+      - Blocking decisions and escalation
+- **Trust - How can I trust that followed the rules we agreed to?**
+   - Questions
+      - How can I trust that the operator used this kit faithfully?
+      - How can I trust that you are where you say you are in the work?
+      - How can I see what decisions you made?
+   - Context Scopes
+      - Run identity & output target: target repository or artifact, relevant subdirectory, and starting revision
+      - Kit provenance
+      - Individual work result and evidence
+      - Supervisor dispositions
+      - Delivery & escalation record
+      - Kit evaluation and improvement
+      - Preserved working evidence
+- **Rules – What cross-cutting agreements or standards must govern the work & how it is accomplished?**
+   - Questions
+      - What are we missing in this kit when taken into consideration with the work as you now understand it?
+      - What rules did the work reveal we need in the future?
+      - What rules would be a better fit in one of the established sections above?
+      - How can I be sure you will respect my writing style everywhere?
+   - Context Scopes
+      - Global Workflow Defaults
+         - Information-access boundaries
+         - Mechanics
+            - Agent entry point
+            - Workspace preparation and isolation
+            - Agent execution transport
+         - Model requirements & selection
+         - Skill dependencies
+         - Tool dependencies
+         - System dependencies (e.g. `jq`, etc)
+         - Artifacts and dependency registry (e.g. cannot start anything until external process completes)
+      - Standing rules and their amendments
+      - Writing conventions
