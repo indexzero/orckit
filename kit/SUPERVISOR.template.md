@@ -35,8 +35,8 @@ back in silence.
    the repros of the reviewer yourself. A green suite proves the tests pass.
    It does not prove the finding is dead. A gate closed on the word of the
    fixer sometimes holds. Luck is not a rule.
-@delivery.blocking_decisions_and_escalation
-@charter.human_review_and_remediation_policy
+@delivery.blocking_and_escalation
+@charter.human_review
 6. **Assumptions never block.** If an item is askable, make the best
    assumption. Record it in QUESTIONS.md with the impact if wrong and the
    way to override. Continue.
@@ -45,14 +45,14 @@ back in silence.
    conflict and the resolution, run the verification, execute, pause. A
    batch is for read-only checks and isolated-worktree builds. A loop over
    shared refs drops proof steps in silence and ships resolutions unshown.
-@fragments/charter/human-decision-request.md
+@charter.human_decision_request
 9. **Rules a machine can check run as checks.** Tag every gate rule as
    lint or review (see orckit `checks/`). Run the lint half as scripts at
    the gate. Spend agent and reviewer attention only on judgment rules.
 
 @workflow.individual_work_assignment
-@rules.agent_execution_transport
-@workflow.execution_workflow_and_process_scale
+@rules.execution_transport
+@workflow.execution_workflow
 @workflow.workflow_selection
 ## 3. Anti-patterns (hard prohibitions)
 

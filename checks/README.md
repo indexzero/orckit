@@ -29,10 +29,11 @@ artifacts, and unnumbered template blanks are excluded. The supervisor must
 verify that the host can actually provide the declared model and capacity.
 
 Run `python3 checks/composition.test.py` for fragment composition checks.
-They cover responsibility bindings, shared fragments, cycles, missing inputs,
-path boundaries, and scaffolding with recorded composition inputs. The
+They cover conventional lookup, declared dependencies, shared fragments,
+cycles, missing inputs, path boundaries, and scaffolding with recorded composition inputs. The
 scaffolding case uses temporary local Git repositories and requires jq.
-Run `python3 create/compose.py --check` to validate the current bindings.
+Run `python3 create/compose.py --check` to validate the declared dependencies.
+Run `python3 create/compose.py --dependencies` to inspect the dependency graph.
 
 ## Run checks (live in your run home, not here)
 

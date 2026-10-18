@@ -65,9 +65,9 @@ buys credibility for the recommendation.>
 Verification section its credibility.>
 **Assessment:** <why optimal despite the drawbacks>
 
-@workflow.model_requirements_and_selection
-@./performance-analysis.md
-@./technical-validation.md
+@workflow.model_selection
+@charter.performance_analysis
+@charter.technical_validation
 ## Recommended Solution: <name>
 
 <A working reference implementation snippet and a path to the runnable
@@ -82,7 +82,7 @@ file. If the solution writes files, this section exists. "Obvious" is not
 an exemption. Lifecycle questions are where designs go blind first. An
 analysis needs no ops section. A tool always does.>
 
-@./cost-analysis.md
+@charter.cost_analysis
 ## Appendix: <production examples, edge-case catalogue>
 
 ## Conclusion

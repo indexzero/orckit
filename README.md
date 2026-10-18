@@ -65,55 +65,73 @@ the manual shape.
 
 ## Composing a kit
 
-[kit.example.json](kit.example.json) binds responsibilities to Markdown
-fragments. Its five groups follow [CONSTITUTION.md](CONSTITUTION.md).
-Each binding is a relative file path or an ordered list of paths.
-Paths in the manifest resolve from the manifest's directory.
+[kit/kit.json](kit/kit.json) declares the rendered documents, their source
+recipes, and their direct fragment dependencies. All paths are relative to
+that file's directory. It records one lookup convention:
 
-The current templates are composition recipes. For example,
-`kit/dispatches/D-###.md` contains `@trust.supervisor_ledger`, and
-`kit/dispatches/D-###.result.md` contains `@trust.delivery_ledger`.
-The referenced formats belong to their respective ledgers. Policy fragments
-define the instructions that those records capture during execution.
+```text
+@{{area}}.{{fragment_name}}
+    → ./fragments/{{area}}/{{fragment_name}}.md
+```
 
-Render a recipe or validate the bindings with Python 3.9 or later:
+For example, `@trust.supervisor_ledger` resolves to
+`fragments/trust/supervisor_ledger.md`. No per-fragment registration is
+needed. The current fragment areas follow [CONSTITUTION.md](CONSTITUTION.md).
+The directory and filename supply the address, including for new fragments.
+
+The manifest separates rendered filenames from recipes. For example:
+
+```json
+"RAILS.md": {
+  "source": "RAILS.template.md",
+  "depends_on": ["@rules.standing_rules", "@rules.writing_conventions"]
+}
+```
+
+This shortened example shows the shape. The actual manifest declares all
+of the recipe's direct dependencies. `depends_on` is a set of required
+composition references, not a content-production workflow. The recipe
+controls inclusion order and the placement of prose.
+
+Nested references define transitive dependencies. A linter can compare
+these declarations with the actual references and follow the graph from
+rendered documents to all contributing fragments.
+
+Render a recipe, check declarations, or inspect the graph with Python 3.9
+or later:
 
 ```sh
 python3 create/compose.py kit/RAILS.template.md
 python3 create/compose.py --check
+python3 create/compose.py --dependencies
 python3 checks/composition.test.py
 ```
 
-A standalone `@charter.completion_contract` line includes the selected
-fragment. A standalone `@./cost-analysis.md` line includes a physical file
-relative to the containing document. Both forms can nest. Only the five
-constitution groups are responsibility namespaces. Indented references and
-`@@` lines remain literal. References are textual directives, including
-inside the Markdown fences used by the existing templates.
+`--dependencies` prints each output's source recipe, direct references, and
+all reachable fragment paths. `--check` catches undeclared or unused direct
+dependencies, missing files, cycles, and references outside the kit directory.
+It also checks unused library fragments. This supplies a foundation for
+further lint rules without a registry that repeats the filesystem.
 
+Standalone references are textual directives, including inside the Markdown
+fences used by the existing templates. Indented references and `@@` lines
+remain literal. Explicit references ending in `.md` retain SpecTree's
+relative-file behavior. The current kit uses conventional addresses throughout.
 The renderer preserves inclusion order and permits shared fragments in
-different branches. Missing bindings, missing files, cycles, and references
-outside the manifest directory fail with a source location. It does not
-substitute placeholders or execute workflow steps.
-
-Change a binding to select another fragment. Workflow bindings can select
-the same fragments as Rules defaults or supply a different file. Bindings
-are explicit. The renderer does not infer inheritance or resolve conflicting
-policies. Some legacy recipes use physical references to preserve the
-placement of parts of a responsibility. Those references select that file
-directly and do not follow a replacement manifest binding.
+different branches. It does not substitute placeholders or execute workflow
+steps.
 
 `create/kit` requires Git, jq, and Python 3.9 or later. Interactive use also
-requires gum. It renders the recipes before creating the run home, retains
-fragment sources, and records the manifest and renderer in provenance.
-The generated `kit.json` includes bindings relative to the run home.
-Rendered templates are snapshots: editing source fragments later does not
-rewrite existing run instructions or issued dispatches.
+requires gum. It renders the declared documents before creating the run home
+and records the manifest, recipes, fragments, and renderer in provenance.
+Fragment sources remain under `fragments/`. Source recipes remain under
+`recipes/`, so the run manifest's dependency declarations can still be checked.
+Rendered documents are snapshots. Later fragment edits do not rewrite
+existing run instructions or issued dispatches.
 
-The initial extraction retains the current instructions and numbered rules.
-The rendered content was compared against all 14 existing templates.
-Identity, provenance, dependency, and backlog fragments also expose concerns
-that previously appeared only in the generator or in layout descriptions.
+The current instructions and numbered rules are retained. Identity,
+provenance, dependency, and backlog fragments also expose concerns that
+previously appeared only in the generator or in layout descriptions.
 
 ## Using Codex
 

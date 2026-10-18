@@ -1,1 +1,1 @@
-@delivery.deviations_from_any_agreement
+@delivery.deviations

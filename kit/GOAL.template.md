@@ -15,7 +15,7 @@ Keep one authoritative procedure. Re-enter after session loss, compaction,
 or a stall. See orckit's `playbooks/codex.md` for Codex setup.
 
 @charter.completion_contract
-@workflow.resumption_and_recovery_procedure
+@workflow.resumption_and_recovery
 ```
 
 ## DONE-WHEN

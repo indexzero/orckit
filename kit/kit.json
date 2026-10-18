@@ -1,0 +1,113 @@
+{
+  "description": "Rendered documents and their direct fragment dependencies. Fragment locations follow the convention; nested references define transitive dependencies.",
+  "conventions": {
+    "@{{area}}.{{fragment_name}}": "./fragments/{{area}}/{{fragment_name}}.md"
+  },
+  "documents": {
+    "AGENTS.md": {
+      "source": "AGENTS.template.md",
+      "depends_on": [
+        "@rules.agent_entry_point"
+      ]
+    },
+    "DEVIATIONS.md": {
+      "source": "DEVIATIONS.template.md",
+      "depends_on": [
+        "@delivery.deviations"
+      ]
+    },
+    "EVALS.md": {
+      "source": "EVALS.template.md",
+      "depends_on": [
+        "@trust.kit_evaluation"
+      ]
+    },
+    "GOAL.md": {
+      "source": "GOAL.template.md",
+      "depends_on": [
+        "@charter.completion_contract",
+        "@workflow.resumption_and_recovery"
+      ]
+    },
+    "LEDGER.md": {
+      "source": "LEDGER.template.md",
+      "depends_on": [
+        "@delivery.current_execution_state",
+        "@trust.durable_decisions",
+        "@delivery.active_work_assignments",
+        "@trust.event_history"
+      ]
+    },
+    "PROBLEM.STATEMENT.md": {
+      "source": "PROBLEM.STATEMENT.template.md",
+      "depends_on": [
+        "@charter.requirements"
+      ]
+    },
+    "QUESTIONS.md": {
+      "source": "QUESTIONS.template.md",
+      "depends_on": [
+        "@delivery.assumptions_and_questions"
+      ]
+    },
+    "RAILS.md": {
+      "source": "RAILS.template.md",
+      "depends_on": [
+        "@rules.standing_rules",
+        "@rules.workspace_preparation",
+        "@delivery.build_and_behavior_preservation",
+        "@delivery.revision_control",
+        "@delivery.adversarial_review",
+        "@rules.information_access",
+        "@charter.human_escalation",
+        "@trust.preserved_working_evidence",
+        "@rules.agent_information_boundaries",
+        "@rules.model_requirements",
+        "@rules.writing_conventions",
+        "@rules.amendments"
+      ]
+    },
+    "SUPERVISOR.md": {
+      "source": "SUPERVISOR.template.md",
+      "depends_on": [
+        "@delivery.blocking_and_escalation",
+        "@charter.human_review",
+        "@charter.human_decision_request",
+        "@workflow.individual_work_assignment",
+        "@rules.execution_transport",
+        "@workflow.execution_workflow",
+        "@workflow.workflow_selection"
+      ]
+    },
+    "TECHNICAL.DESIGN.md": {
+      "source": "TECHNICAL.DESIGN.template.md",
+      "depends_on": [
+        "@charter.technical_design"
+      ]
+    },
+    "ctx/README.md": {
+      "source": "ctx/README.template.md",
+      "depends_on": [
+        "@charter.human_context"
+      ]
+    },
+    "dispatches/D-###.md": {
+      "source": "dispatches/D-###.md",
+      "depends_on": [
+        "@trust.supervisor_ledger"
+      ]
+    },
+    "dispatches/D-###.result.md": {
+      "source": "dispatches/D-###.result.md",
+      "depends_on": [
+        "@trust.delivery_ledger"
+      ]
+    },
+    "skills/README.md": {
+      "source": "skills/README.template.md",
+      "depends_on": [
+        "@rules.skill_dependencies"
+      ]
+    }
+  }
+}

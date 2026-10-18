@@ -8,20 +8,20 @@
 > cannot amend is overridden in silence. Give the file both properties.
 
 ```markdown
-@fragments/rules/standing-rules.md
-@rules.workspace_preparation_and_isolation
-@delivery.build_and_behavior_preservation_policy
-@delivery.revision_control_integration_and_delivery_policy
-@delivery.adversarial_review_and_remediation_policy
-@fragments/rules/information-access.md
+@rules.standing_rules
+@rules.workspace_preparation
+@delivery.build_and_behavior_preservation
+@delivery.revision_control
+@delivery.adversarial_review
+@rules.information_access
 ## Unattended discipline
 
-@fragments/charter/human-escalation.md
+@charter.human_escalation
 @trust.preserved_working_evidence
-@fragments/rules/agent-information-boundaries.md
-@rules.model_requirements_and_selection
+@rules.agent_information_boundaries
+@rules.model_requirements
 @rules.writing_conventions
-@fragments/rules/amendments.md
+@rules.amendments
 ```
 
 ## DONE-WHEN (for an instantiation of this template)

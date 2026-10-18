@@ -1,1 +1,1 @@
-@charter.distilled_intent_source_requirements_and_acceptance_criteria
+@charter.requirements

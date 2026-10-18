@@ -15,7 +15,7 @@ Instantiate the kit templates into a run home (README lifecycle, step 1):
   <orckits>/<owner>/<repo>/<YYYY>-<MM>-<slug>/
 
 Every *.template.md loses the .template infix. Markdown recipes are rendered
-through kit.example.json; fragment sources are retained under fragments/.
+through kit/kit.json. Fragment sources are retained under fragments/.
 Dispatch templates are rendered with their existing filenames.
 The skills/ slot starts as its index alone (which skills belong is unique to
 the run — populate it yourself), ctx/ starts as its README alone (the slot
@@ -181,7 +181,7 @@ git_head=$(git -C "$orckit_root" rev-parse HEAD)
 orckit_short=$(git -C "$orckit_root" rev-parse --short HEAD)
 describe=$(git -C "$orckit_root" describe --always --tags)
 
-# inputs[] records every recipe, fragment, binding, and composition tool.
+# inputs[] records every recipe, fragment, manifest, and composition tool.
 # Each digest covers raw source bytes. Dirty flags compare with gitHead.
 # The pinned transform determines the rendered output names and content.
 input_line() {
@@ -200,7 +200,6 @@ inputs_json=$(
       | while IFS= read -r src; do input_line "kit/$src"; done
     input_line create/kit
     input_line create/compose.py
-    input_line kit.example.json
   } | jq -Rn '[inputs | split("\t")
                | {source: .[0], digest: .[1], dirty: (.[2] == "true")}]'
 )
@@ -222,7 +221,7 @@ echo "  axes        ${axes:-<none — fill evals.axes during the interview>}"
 echo "  lineage     includeInputDigests: $lineage_digests"
 echo "  files:"
 printf '%s' "$inputs_json" \
-  | jq -r '.[] | select(.source | startswith("kit/"))
+  | jq -r '.[] | select((.source | startswith("kit/")) and .source != "kit/kit.json")
            | "    \(.source | ltrimstr("kit/") | sub("\\.template\\.md$"; ".md"))\(if .dirty then "   (dirty — differs from gitHead)" else "" end)"'
 echo "    kit.json"
 if [ "$(printf '%s' "$inputs_json" \
@@ -237,7 +236,7 @@ confirm "Scaffold $run_rel?" || die "aborted"
 # leaves no partial scaffold. Retain the source fragments beside snapshots.
 composition_stage=$(mktemp -d)
 trap 'rm -rf "$composition_stage"' EXIT
-python3 "$script_dir/compose.py" --manifest "$orckit_root/kit.example.json" \
+python3 "$script_dir/compose.py" --manifest "$kit_dir/kit.json" \
   --output-dir "$composition_stage"
 mkdir -p "$run_home"
 cp -R "$composition_stage/." "$run_home/"
@@ -265,9 +264,9 @@ jq -n \
   --argjson inputs "$inputs_json" \
   --argjson axes "$axes_json" \
   --argjson lineage_digests "$lineage_digests" \
-  --argjson bindings "$(jq '{charter, workflow, delivery, trust, rules}
-    | walk(if type == "string" then ltrimstr("kit/") else . end)' \
-    "$orckit_root/kit.example.json")" \
+  --argjson composition "$(jq '{conventions, documents}
+    | .documents |= with_entries(.value.source |= "recipes/" + .)' \
+    "$kit_dir/kit.json")" \
   '{
      version: 2,
      gitHead: $git_head,
@@ -280,7 +279,7 @@ jq -n \
      inputs: $inputs,
      evals: { file: "EVALS.md", axes: $axes },
      lineage: { includeInputDigests: $lineage_digests }
-   } + $bindings' > "$run_home/kit.json"
+   } + $composition' > "$run_home/kit.json"
 
 echo "Scaffolded $run_home"
 echo ""

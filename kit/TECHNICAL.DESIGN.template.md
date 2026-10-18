@@ -1,1 +1,1 @@
-@charter.technical_design_and_approach_selection
+@charter.technical_design

@@ -1,1 +1,1 @@
-@charter.initial_human_supplied_context_and_scope
+@charter.human_context

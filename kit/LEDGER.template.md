@@ -44,7 +44,7 @@ orchestration/
 
 @delivery.current_execution_state
 @trust.durable_decisions
-@delivery.active_work_assignments_and_their_status
+@delivery.active_work_assignments
 ```
 
 The status vocabulary: `PLANNED` is a dispatch file written before the
