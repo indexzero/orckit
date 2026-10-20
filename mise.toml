@@ -2,3 +2,45 @@
 gh = "latest"
 gum = "latest"
 jq = "latest"
+usage = "latest"
+
+# The orckit CLI exists as a usage spec only (orckit.usage.kdl). These tasks
+# render it. Nothing here runs a command of the CLI. See doc/CLI.md.
+
+[tasks."cli:lint"]
+description = "Lint orckit.usage.kdl. Warnings are errors"
+run = "usage lint -W orckit.usage.kdl"
+
+[tasks."cli:help"]
+description = "Render help from the spec. Pass a subcommand after --, for example: mise run cli:help -- ref mint --help"
+shell = "bash -c"
+run = '''
+set -eu
+[ $# -gt 0 ] || set -- --help
+stub=$(mktemp "${TMPDIR:-/tmp}/orckit-stub.XXXXXX")
+trap 'rm -f "$stub"' EXIT
+{
+  printf '%s\n' '#!/usr/bin/env -S usage bash'
+  sed 's/^/#USAGE /' orckit.usage.kdl
+  printf '%s\n' 'echo "orckit is a spec, not a program yet. See doc/CLI.md."'
+} > "$stub"
+# usage 5.x prints subcommand help on stderr with exit 1. The text is correct.
+usage bash "$stub" "$@" || true
+'''
+
+[tasks."cli:docs"]
+description = "Generate doc/cli/reference.md from the spec"
+run = "usage generate markdown -f orckit.usage.kdl --out-file doc/cli/reference.md"
+
+[tasks."cli:completions"]
+description = "Print a completion script for one shell, for example: mise run cli:completions -- zsh"
+usage = '''
+arg "<shell>" help="Shell to generate for" default="zsh" {
+  choices "bash" "zsh" "fish" "nu" "powershell"
+}
+'''
+run = 'usage generate completion "${usage_shell:-zsh}" orckit -f orckit.usage.kdl'
+
+[tasks."cli:json"]
+description = "Print the spec as JSON, for tooling that reads the command tree"
+run = "usage generate json -f orckit.usage.kdl"

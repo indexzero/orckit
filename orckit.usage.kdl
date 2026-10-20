@@ -1,0 +1,609 @@
+// orckit.usage.kdl: the proposed command set of an `orckit` CLI.
+//
+// This is a usage spec (https://usage.jdx.dev). No CLI exists yet. The spec
+// is the design. Every command below is tagged in doc/CLI.md as existing
+// behavior (it wraps a script or a file convention the kit already has) or
+// as new. Render help, markdown, and completions with the mise tasks in
+// mise.toml, or with the usage CLI directly:
+//
+//   usage lint orckit.usage.kdl
+//   usage generate markdown -f orckit.usage.kdl
+//   usage generate completion zsh orckit -f orckit.usage.kdl
+//
+// Vocabulary. `orckit` is the public program: templates, checks, playbooks.
+// `orckits` is the private companion repository: one directory per run,
+// named <owner>/<repo>/<YYYY>-<MM>-<slug>/. A run home holds kit.json, the
+// instantiated templates, and the ledger under orchestration/.
+
+min_usage_version "5.1"
+name "orckit"
+bin "orckit"
+version "0.0.0-spec"
+about "Orchestration kit for fleets of coding agents. Git is the database."
+long_about #"""
+orckit is the process layer for fleets of coding agents that work against
+real repositories. The public `orckit` repository is the program. Your
+private `orckits` repository is the data: one directory per run.
+
+Most commands act on one run home. The run is resolved in this order:
+the `--run` flag, the `ORCKIT_RUN` variable, then the nearest `kit.json`
+above the working directory. The private clone is resolved from `--orckits`,
+then `ORCKITS_HOME`, then the sibling directory `../orckits` of the orckit
+checkout.
+"""#
+after_help #"""
+Read doc/CLI.md for the rationale, the command table, and the design of
+reference handles. Nothing here is implemented yet.
+"""#
+
+// ---------------------------------------------------------------------
+// Global flags
+// ---------------------------------------------------------------------
+
+flag "--orckits <dir>" help="Local clone of the private orckits companion repository" global=#true env="ORCKITS_HOME" {
+    long_help #"""
+Local clone of the private orckits companion repository.
+
+Defaults to `ORCKITS_HOME`, then to the directory `../orckits` beside the
+orckit checkout. The same default `create/kit` and `create/kits-repo` use.
+"""#
+}
+flag "-r --run <run>" help="Run home: a path, or <owner>/<repo>/<YYYY>-<MM>-<slug> inside orckits" global=#true env="ORCKIT_RUN" {
+    long_help #"""
+The run home a command acts on.
+
+Accepts an absolute or relative path to a directory that holds `kit.json`,
+or the run name `<owner>/<repo>/<YYYY>-<MM>-<slug>` relative to the
+orckits clone. When absent, the nearest `kit.json` above the working
+directory names the run.
+"""#
+}
+flag "--json" help="Machine-readable output, one JSON document on stdout" global=#true
+flag "-q --quiet" help="Print only errors and the primary result" global=#true
+flag "-C --color <when>" help="Color output" global=#true default="auto" {
+    choices "auto" "always" "never"
+}
+
+// ---------------------------------------------------------------------
+// Dynamic completions. In usage 5.x a top-level `complete` node binds by
+// argument name: every `<run>` and `<handle>` below completes from these.
+// ---------------------------------------------------------------------
+
+complete "run" run="orckit kits ls --names"
+complete "handle" run="orckit ref ls --handles"
+complete "check" run="orckit check ls --names"
+complete "dispatch" run="orckit dispatch ls --ids"
+
+// ---------------------------------------------------------------------
+// kits: the private companion repository
+// ---------------------------------------------------------------------
+
+cmd "kits" help="Create and inspect the private orckits companion repository" subcommand_required=#true {
+    long_help #"""
+The orckits repository is the data half of the kit. It is private.
+It holds one directory per run, named <owner>/<repo>/<YYYY>-<MM>-<slug>/.
+Run context never leaves it. Only distilled lineage digests do.
+"""#
+
+    cmd "create" help="Create <user>/orckits on GitHub, clone it beside this checkout, seed a README" effect="write" {
+        long_help #"""
+First-time setup of the private companion repository. Wraps `create/kits-repo`.
+
+Derives <user> from `gh api user`. Creates the repository as private.
+Clones it to `--path`. Seeds a short README. Pushes the initial commit.
+Refuses to clobber an existing repository or an existing local path.
+"""#
+        flag "--name <name>" help="Repository name" default="orckits"
+        flag "--path <dir>" help="Local clone destination (default: ../<name> beside the orckit checkout)"
+        flag "-y --yes" help="Skip the confirmation prompt"
+        example #"orckit kits create"# header="Create <user>/orckits and clone it as ../orckits"
+        example #"orckit kits create --name orckits-work --path ~/src/orckits-work --yes"# header="A second companion under another name"
+    }
+
+    cmd "ls" help="List the run homes in the orckits clone" effect="read" {
+        alias "list"
+        long_help #"""
+Walks the orckits clone for directories that hold a `kit.json`.
+Prints one run per line: name, phase from `orchestration/STATE.md`, and
+the orckit commit the run descends from. Use `--names` for a bare list
+that shell completion consumes.
+"""#
+        flag "--names" help="Print only run names, one per line"
+        flag "--paths" help="Print absolute paths instead of run names"
+        flag "--repo <owner/repo>" help="Only runs whose target is this repository"
+        flag "--phase <phase>" help="Only runs whose STATE.md phase matches" {
+            choices "active" "complete" "blocked" "scaffold"
+        }
+        example #"orckit kits ls --repo acme/widgets"# header="Every run against one target"
+    }
+
+    cmd "path" help="Print the resolved orckits clone path" effect="read"
+}
+
+// ---------------------------------------------------------------------
+// new: instantiate a run home (README lifecycle, step 1)
+// ---------------------------------------------------------------------
+
+cmd "new" help="Instantiate the kit templates into a run home in your orckits" effect="write" {
+    alias "instantiate"
+    long_help #"""
+Lifecycle step 1. Wraps `create/kit`.
+
+Copies `kit/` into `<orckits>/<owner>/<repo>/<YYYY>-<MM>-<slug>/`, strips the
+`.template` infix, leaves the `skills/` slot as its index alone, and writes
+`kit.json` (version 2): the orckit `gitHead` the run descends from, the
+digest and dirty bit of every input template, the target repository, the
+eval axes, and the lineage digest policy. Offers to commit the run home,
+because every event is a commit.
+
+The interview that fills PROBLEM.STATEMENT.md stays with the agent and the
+owner. This command does not fill placeholders and does not install skills.
+"""#
+    flag "--repo <target>" help="Target code repository: <owner>/<repo> (GitHub assumed) or a full git URL" required=#true
+    flag "--slug <slug>" help="Run slug, kebab-case lowercase (for example fix-auth-loop)" required=#true
+    flag "--directory <path>" help="Subdirectory of the target this run is scoped to (monorepos)"
+    flag "--axes <axes>" help="Eval axes this run is graded on, comma-separated kebab-case"
+    flag "--no-lineage-digests" help="Keep per-input digests out of the public lineage digest"
+    flag "--profile <profile>" help="Template profile (new, not in create/kit yet). Which kit/ files instantiate" {
+        choices "full" "issue-sweep" "toy"
+    }
+    flag "-y --yes" help="Skip all confirmation prompts"
+    example #"orckit new --repo acme/widgets --slug fix-auth-loop"# header="Scaffold a run, then interview the owner"
+    example #"orckit new --repo acme/widgets --slug issue-sweep --axes verbatim,evidence,termination --yes"# header="Name the graded axes at birth"
+}
+
+// ---------------------------------------------------------------------
+// status and resume: the supervisor's view of a run
+// ---------------------------------------------------------------------
+
+cmd "status" help="Phase, next action, gates, deliverables, and BLOCKED state of a run" effect="read" {
+    alias "st"
+    long_help #"""
+Reads `kit.json` and `orchestration/STATE.md`. Prints the phase, the next
+action, the gate table, the deliverables table (PR, Issue, State), the loop
+counters, and whether `orchestration/BLOCKED.md` exists. When the ledger
+is absent, reports the run as a scaffold and lists the templates that still
+carry placeholders.
+
+Exit 0 when the run is active or complete. Exit 3 when BLOCKED.md exists,
+so a shell loop can stop on it.
+"""#
+    flag "--gates" help="Print only the gate table"
+    flag "--deliverables" help="Print only the deliverables table"
+    flag "--placeholders" help="List unresolved <placeholders> in the instantiated templates"
+    example #"orckit status --run acme/widgets/2026-01-example"# header="One run by name"
+    example #"orckit status --json | jq .next_action"# header="The resume point as data"
+}
+
+cmd "resume" help="Print or launch the idempotent re-entry for a run (GOAL.md procedure)" effect="read" {
+    long_help #"""
+Sessions are mortal. The procedure is not. This command resolves the run
+and prints the pointer prompt that playbooks/codex.md and the run `AGENTS.md`
+expect:
+
+    Read <run home>/AGENTS.md and resume this run as supervisor.
+
+With `--launch`, it starts the named host from the run home so that the host
+discovers `AGENTS.md`, and passes the pointer as the first prompt. It never
+pastes ledger content into the prompt. The ledger is read by the agent, not
+by this command.
+"""#
+    flag "--host <host>" help="Agent host to launch" {
+        choices "codex" "claude"
+    }
+    flag "--launch" help="Start the host instead of printing the pointer"
+    flag "--role <role>" help="Which entry in AGENTS.md to resume as" default="supervisor" {
+        choices "supervisor" "worker"
+    }
+    flag "--dispatch <dispatch>" help="With --role worker: the dispatch id to point at (for example D-003)"
+    flag "--model <model>" help="Exact model id to pass to the host. An alias is not a pin (RAILS rule 26)"
+    example #"orckit resume"# header="Print the pointer for the run above the working directory"
+    example #"orckit resume --host codex --launch --model <exact-model-id>"# header="Launch Codex from the run home"
+}
+
+// ---------------------------------------------------------------------
+// ledger: read the only memory (orchestration/)
+// ---------------------------------------------------------------------
+
+cmd "ledger" help="Read the run ledger: LOG tail, STATE, BLOCKED, and its DONE-WHEN" subcommand_required=#true {
+    long_help #"""
+The ledger is the only memory. These commands read it. None of them
+write it. The supervisor writes the ledger, one commit per event. The
+layout is kit/LEDGER.template.md.
+"""#
+
+    cmd "log" help="Tail orchestration/LOG.md (append-only, newest last)" effect="read" {
+        long_help #"""
+Prints the last lines of `orchestration/LOG.md`. Each line obeys the
+grammar `- <ISO8601> <EVENT> <detail>`. The event vocabulary is fixed:
+INVOCATION-ZERO, DISPATCH, RESULT, GATE, DECISION, INCIDENT, USER,
+CANCELLED, PREP, ANNOUNCE, NOTE, ENV, BRANCH, PR.
+"""#
+        flag "-n --lines <n>" help="Number of lines from the end" default="20"
+        flag "-e --event <event>" help="Only lines with this EVENT. Repeatable" var=#true
+        flag "-f --follow" help="Keep the file open and print new lines as commits land"
+        flag "--since <iso8601>" help="Only lines at or after this timestamp"
+        example #"orckit ledger log -n 50 --event GATE --event INCIDENT"# header="Gates and incidents only"
+    }
+
+    cmd "state" help="Print orchestration/STATE.md, or one section of it" effect="read" {
+        flag "-s --section <section>" help="One section only" {
+            choices "phase" "gates" "loops" "decisions" "deliverables" "stack" "registry"
+        }
+        example #"orckit ledger state --section registry"# header="The dispatch registry table"
+    }
+
+    cmd "blocked" help="Print orchestration/BLOCKED.md when it exists. Exit 3 when it does" effect="read" {
+        long_help #"""
+BLOCKED.md exists only when a human decision is required. It carries the
+exact question. This command prints it and exits 3. When the file is absent
+it prints nothing and exits 0.
+"""#
+    }
+
+    cmd "verify" help="Check the ledger DONE-WHEN: pairs, evidence paths, verdict lines" effect="read" {
+        long_help #"""
+The machine-checkable half of kit/LEDGER.template.md DONE-WHEN:
+
+- every `D-###.md` has at least one `D-###.result.*.md` sibling
+- every evidence path in a gate row exists and contains the quoted VERDICT
+- every gate-bearing result ends with a `VERDICT:` line as its final line
+- every result header hash matches the sha256 of its dispatch bytes
+- STATE.md names a next action
+
+Prints each violation as `file: rule`. Exit nonzero on any violation.
+"""#
+    }
+}
+
+// ---------------------------------------------------------------------
+// dispatch: the pointer-dispatch protocol (kit/dispatches/D-###.md)
+// ---------------------------------------------------------------------
+
+cmd "dispatch" help="Write, point at, hash, and verify dispatch files" subcommand_required=#true {
+    long_help #"""
+The file IS the prompt. A dispatch is written first, then sent by
+pointer, so verbatim holds by construction. These commands make the
+protocol in kit/dispatches/D-###.md mechanical.
+"""#
+
+    cmd "ls" help="List dispatches with their result siblings and registry status" effect="read" {
+        flag "--ids" help="Print only dispatch ids, one per line"
+        flag "--status <status>" help="Only dispatches with this registry status" {
+            choices "PLANNED" "RUNNING" "DONE" "CANCELLED"
+        }
+    }
+
+    cmd "new" help="Write the next D-###.md from the kit skeleton" effect="write" {
+        long_help #"""
+Allocates the next id, writes `orchestration/dispatches/D-###.md` from the
+skeleton in kit/dispatches/D-###.md, fills the metadata block, and leaves
+the prompt below the scissors for the supervisor. Does not send anything.
+Registers the dispatch as PLANNED in STATE.md when `--register` is set.
+"""#
+        arg "<kind>" help="Kind and result shortname" {
+            choices "research" "review" "closure" "build" "fix" "verify"
+        }
+        flag "--title <title>" help="One-line task" required=#true
+        flag "--model <model>" help="Exact model id (RAILS rule 26)" required=#true
+        flag "--context-window <tokens>" help="Effective context window, a positive integer of tokens" required=#true
+        flag "--reasoning <setting>" help="Host reasoning setting, or not-applicable" default="not-applicable"
+        flag "--transport <transport>" help="How the agent is started" default="native" {
+            choices "native" "cli"
+        }
+        flag "--replaces <dispatch>" help="The dispatch this one replaces. Adds the what-changed block"
+        flag "--retro" help="Mark the file RETRO: reconstructed after the fact"
+        flag "--register" help="Add a PLANNED row to the STATE.md dispatch registry"
+        example #"orckit dispatch new review --title "Attack the scaffold" --model <exact-model-id> --context-window 200000"# header="A review dispatch, pinned"
+    }
+
+    cmd "pointer" help="Print the pointer prompt for a dispatch: zero assignment content" effect="read" {
+        long_help #"""
+Prints the three-line pointer that the protocol sends:
+
+    You are subagent D-###. Read <abs path>/orchestration/dispatches/D-###.md
+    now. Everything below its scissors marker is your entire assignment.
+    Begin at its STEP 0.
+
+The absolute path is for the agent on this machine. It is never written
+into a public artifact. Use `orckit ref mint` for that.
+"""#
+        arg "<dispatch>" help="Dispatch id, for example D-003"
+    }
+
+    cmd "hash" help="Print the sha256 of a dispatch file and its first 8 hex characters" effect="read" {
+        arg "<dispatch>" help="Dispatch id, for example D-003"
+    }
+
+    cmd "verify" help="Compare each result header hash to its dispatch bytes" effect="read" {
+        long_help #"""
+A result records the sha256-8 of the dispatch it executed. A mismatch
+means the dispatch was edited after dispatch. That is a ledger violation,
+not a mystery. Prints each mismatch. Exit nonzero on any.
+"""#
+        arg "[dispatch]..." help="Dispatch ids. Default: all" var=#true
+    }
+}
+
+// ---------------------------------------------------------------------
+// check: the half of the rules a machine can check (checks/)
+// ---------------------------------------------------------------------
+
+cmd "check" help="Run the kit checks and the run checks (checks/*.sh)" subcommand_required=#true {
+    long_help #"""
+Every rule is tagged by who can check it. The scripts in `checks/` are the
+half a machine can check. Each takes its project facts as arguments, exits
+nonzero on a violation, and prints the offending evidence on stdout. A check
+that fails is a gate failure, not a conversation. These subcommands pass
+their arguments straight through to the scripts.
+"""#
+
+    cmd "ls" help="List kit checks and the run checks under <run>/checks/" effect="read" {
+        flag "--names" help="Print only check names, one per line"
+    }
+
+    cmd "porcelain" help="The main checkout porcelain equals the pinned baseline (RAILS rule 3)" effect="read" {
+        arg "<repo>" help="The main checkout"
+        arg "<baseline>" help="File with the expected `git status --porcelain` lines"
+    }
+
+    cmd "trailer" help="Every commit in a range ends with the attribution trailer (RAILS rule 13)" effect="read" {
+        arg "<repo>" help="Repository to inspect"
+        arg "<range>" help="Commit range, for example main..HEAD"
+    }
+
+    cmd "footer" help="The PR body carries no AI-attribution footer (RAILS rule 14)" effect="read" {
+        arg "<pr>" help="Pull request number"
+    }
+
+    cmd "ownership" help="The diff against a base is a subset of the dispatch ownership list" effect="read" {
+        arg "<repo>" help="Repository to inspect"
+        arg "<base>" help="Base ref to diff against"
+        arg "<file>..." help="Allowed files, as the dispatch Scope lists them" var=#true
+    }
+
+    cmd "model" help="Every numbered dispatch pins a versioned model id and a context window (RAILS rule 26)" effect="read" {
+        arg "[dispatch-dir]" help="Directory of D-*.md files. Default: <run>/orchestration/dispatches"
+    }
+
+    cmd "prose" help="Prose obeys the writing rules (RAILS rule 27, playbooks/writing-rules.md)" effect="read" {
+        arg "<file>..." help="Markdown files to lint" var=#true
+    }
+
+    cmd "run" help="Run a project-shaped check that lives in <run>/checks/" effect="read" {
+        arg "<check>" help="Check name without .sh"
+        arg "[arg]..." help="Arguments the check takes. Everything project-specific is an argument" var=#true
+    }
+
+    cmd "all" help="Run every kit check the run RAILS binds, with arguments from kit.json and STATE.md" effect="read" {
+        long_help #"""
+Reads the facts a gate needs from the ledger: the main checkout, the
+pinned porcelain baseline, the open PR numbers, the dispatch directory, and
+the artifacts RAILS rule 27 binds. Runs each kit check with those facts.
+Prints one line per check with PASS or FAIL and the evidence path.
+"""#
+        flag "--gate <gate>" help="Only the checks a named gate binds, for example G3"
+    }
+}
+
+// ---------------------------------------------------------------------
+// grade: EVALS.md (README lifecycle, step 5)
+// ---------------------------------------------------------------------
+
+cmd "grade" help="Verify EVALS.md against its DONE-WHEN and count the cost of convergence" effect="read" {
+    long_help #"""
+Lifecycle step 5. The run ends with `EVALS.md`: a verdict per template,
+numbered diff-shaped amendments, honest costs. This command does the half a
+machine can do:
+
+- every template the run instantiated has a verdict row with evidence
+- at least one verdict is MODIFY or DROP. A kit graded all-KEEP was not graded
+- the cost numbers match the ledger: dispatch count, cancelled and replaced
+  dispatches, loop counters spent, incidents, inline work by the supervisor
+- every axis in `kit.json` `evals.axes` is addressed
+
+With `--counts` it prints the ledger-derived numbers so the author can paste
+real counts, not impressions. The judgment half stays with the author.
+"""#
+    flag "--counts" help="Print the ledger-derived cost of convergence and exit"
+    flag "--axes" help="Print the eval axes from kit.json and whether EVALS.md addresses each"
+    example #"orckit grade --counts"# header="Real numbers for the Cost of convergence section"
+}
+
+// ---------------------------------------------------------------------
+// lineage: digests become amendments (lineage/)
+// ---------------------------------------------------------------------
+
+cmd "lineage" help="Distill, sanitize, and verify the run digest that an amendment cites" subcommand_required=#true {
+    long_help #"""
+Every shape in the kit is earned by a run. A digest is the sanitized
+EVALS.md of one run, named by slug alone, with no private context and no
+absolute path. An amendment PR cites it. No digest, no amendment.
+"""#
+
+    cmd "digest" help="Draft lineage/evals/<YYYY>-<MM>-<slug>.md from the run EVALS.md" effect="write" {
+        long_help #"""
+Writes a draft digest in the shape of lineage/evals/YYYY-MM-slug-name.template.md
+into the orckit checkout given by `--kit`. Copies the amendments and the
+honesty sections. Replaces every private path with a reference handle (see
+`orckit ref`), or strikes it when `--no-handles` is set. Includes the
+per-input digests from kit.json only when `lineage.includeInputDigests` is
+true. The author still reads every line before it is committed. A
+sanitizer is a lint, not a reading.
+"""#
+        flag "--kit <dir>" help="The orckit checkout that receives the digest (default: the one this binary came from)"
+        flag "--staged" help="Mark the digest as staged at the scaffold phase"
+        flag "--no-handles" help="Strike private references instead of replacing them with handles"
+        flag "-o --out <file>" help="Write the draft here instead of lineage/evals/"
+        example #"orckit lineage digest --staged"# header="Stage a digest before the run starts"
+    }
+
+    cmd "verify" help="Lint a digest for what it must not carry" effect="read" {
+        long_help #"""
+The lineage README rule, as a lint: the digest names the run by slug alone,
+and carries no absolute path, no private repository name, no run name of the
+form <owner>/<repo>/<YYYY>-<MM>-<slug>, and no raw orckits path. Every
+`pkg:orckits/` handle in it resolves when `--resolve` is set and the private
+clone is present. Prints each violation as `file:line: rule`.
+"""#
+        arg "<file>..." help="Digest files to lint" var=#true
+        flag "--resolve" help="Also resolve every reference handle against the local orckits clone"
+    }
+
+    cmd "ls" help="List the digests in lineage/evals/ and the amendments each one carries" effect="read"
+}
+
+// ---------------------------------------------------------------------
+// upgrade: move a run to newer kit inputs (kit.json inputs[])
+// ---------------------------------------------------------------------
+
+cmd "upgrade" help="Compare and move a run's kit inputs to a newer orckit commit" effect="write" {
+    long_help #"""
+`kit.json` records the orckit `gitHead` a run descends from, and the digest
+of every input template at birth. This command does a three-way comparison
+per input: the template at the recorded `gitHead`, the template at the new
+revision, and the instantiated file in the run. A file the run never edited
+is replaced. A file the run edited is left alone and reported with the
+upstream diff, so the supervisor applies it by hand. `kit.json` records the
+new `gitHead` and refreshed digests. The move is one commit in orckits.
+
+Without `--apply` the command only reports. It never touches `orchestration/`,
+`ctx/`, `sslop/`, or `skills/`.
+"""#
+    flag "--to <rev>" help="Orckit revision to move to" default="HEAD"
+    flag "--kit <dir>" help="The orckit checkout to read templates from"
+    flag "--input <source>" help="Only this input, by its kit.json source path (for example kit/RAILS.template.md). Repeatable" var=#true
+    flag "--apply" help="Write the changes and commit them in orckits. Default is report only"
+    flag "--diff" help="Print the upstream diff for every input the run edited"
+    example #"orckit upgrade --diff"# header="What changed upstream since this run was born"
+    example #"orckit upgrade --to v0.2.0 --apply"# header="Move the untouched inputs to a tag"
+}
+
+// ---------------------------------------------------------------------
+// ref: opaque reference handles for private run notes
+// ---------------------------------------------------------------------
+
+cmd "ref" help="Mint and resolve opaque handles that cite private run notes from public text" subcommand_required=#true {
+    long_help #"""
+A public repository needs to cite a private run note without exposing a
+disk path, a repository name, or a run slug. A handle is a keyed digest of
+the run name and the file path inside the run. Only an orckits clone that
+holds the key maps a handle back to a file. The handle has the shape
+
+    pkg:orckits/<keyid>/<digest>[@<orckits-commit>][?lines=<a>-<b>]
+
+The handle reveals that a private note exists, which orckits key minted it,
+and optionally which orckits commit pins it. It never reveals the owner, the
+target repository, the slug, the file name, or any path. See doc/CLI.md for
+the threat model.
+"""#
+
+    cmd "mint" help="Mint a handle for one or more files inside a run home" effect="write" {
+        long_help #"""
+Computes `HMAC-SHA256(key, "<run name>\n<file path>")`, truncated to 128
+bits and hex-encoded. Appends the mapping to the private index
+`<orckits>/.orckit/refs.jsonl` and commits it, because every event is a
+commit. Prints one handle per input path. The index is the fast path for
+resolution. It also records which private files have public citations.
+"""#
+        arg "<path>..." help="Files inside a run home, as paths or as run-relative paths with --run" var=#true
+        flag "--format <format>" help="Handle form" default="purl" {
+            choices "purl" "bare"
+        }
+        flag "--pin" help="Append @<orckits-commit> so the citation resolves to the bytes at mint time"
+        flag "--lines <range>" help="Append ?lines=<a>-<b>. One range, applied to one path"
+        flag "--content-digest" help="Append ?sha256=<digest> of the file bytes. Off by default. Read the threat model first"
+        flag "--no-keyid" help="Omit the key id. Resolution tries every key in the clone"
+        flag "--no-commit" help="Update the index but do not commit it"
+        example #"orckit ref mint --run acme/widgets/2026-01-example orchestration/LOG.md"# header="Cite a ledger from a public PR body"
+        example #"orckit ref mint --pin --lines 40-58 ./orchestration/dispatches/D-003.result.review.md"# header="Pin a finding at a commit and a line range"
+    }
+
+    cmd "resolve" help="Print the run and file a handle names, when this clone can map it" effect="read" {
+        long_help #"""
+Looks the digest up in the private index. When absent, recomputes the
+digest over every file in every run home with every key the clone holds.
+Prints `<run name>\t<file path>` plus the pinned commit and line range when
+the handle carries them. Exit 4 when no mapping exists on this machine.
+"""#
+        arg "<handle>..." help="Handles to resolve" var=#true
+        flag "--paths" help="Print absolute paths instead of run names"
+        flag "--exists" help="Exit 0 only when every handle resolves. Print nothing"
+    }
+
+    cmd "cat" help="Print the file a handle names" effect="read" {
+        long_help #"""
+Prints the file contents. A handle with `@<commit>` prints the bytes at
+that orckits commit. `--live` prints the working tree instead. A handle with
+`?lines=` prints only that range unless `--all` is set.
+"""#
+        arg "<handle>" help="Handle to print"
+        flag "--live" help="Ignore the pinned commit and print the working tree file"
+        flag "--all" help="Ignore the lines qualifier and print the whole file"
+    }
+
+    cmd "open" help="Open the file a handle names in $VISUAL or $EDITOR" effect="read" {
+        arg "<handle>" help="Handle to open"
+        flag "--with <command>" help="Program to open with (default: $VISUAL, then $EDITOR, then the system opener)"
+    }
+
+    cmd "ls" help="List the handles this clone has minted, from the private index" effect="read" {
+        flag "--handles" help="Print only handles, one per line"
+        flag "--run <run>" help="Only handles that point into this run"
+    }
+
+    cmd "scan" help="Find handles and leaks in public text" effect="read" {
+        long_help #"""
+Reads files meant for a public place: a PR body, a digest, a README.
+Reports every `pkg:orckits/` handle and, with `--resolve`, whether this
+clone resolves it. Reports every leak: an absolute path, an orckits clone
+path, a run name of the form <owner>/<repo>/<YYYY>-<MM>-<slug>, and the
+names of run homes this clone knows. Exit nonzero on any leak.
+"""#
+        arg "<file>..." help="Files to scan. Use - for stdin" var=#true
+        flag "--resolve" help="Also check that every handle resolves on this machine"
+    }
+
+    cmd "key" help="Manage the keys that mint and resolve handles" subcommand_required=#true {
+        long_help #"""
+Keys live in the private orckits clone under `.orckit/keys/<keyid>`, so
+every clone of the private repository resolves every handle. The key id is
+the first 8 hex characters of the SHA-256 of the key. A new key does not
+invalidate old handles. Old keys stay in the directory for resolution.
+"""#
+        cmd "init" help="Create the first key when none exists" effect="write"
+        cmd "rotate" help="Create a new key and make it the default for minting. Old keys stay" effect="write"
+        cmd "ls" help="List key ids and which one mints by default" effect="read"
+    }
+}
+
+// ---------------------------------------------------------------------
+// doctor, completion, usage: the CLI about itself
+// ---------------------------------------------------------------------
+
+cmd "doctor" help="Verify the tools and paths a run needs: git, gh, jq, gum, the orckits clone" effect="read" {
+    long_help #"""
+The run `AGENTS.md` says to verify required tools before dispatch. This
+command checks for `git`, `gh` (authenticated), `jq`, and `gum`, the ones
+mise.toml pins, plus the hosts named in the run (`codex`, `claude`). It
+verifies that the orckits clone resolves and is a git repository, and that
+a key exists for `orckit ref`. One line per item, PASS or FAIL.
+"""#
+    flag "--host <host>" help="Also verify that this agent host is on PATH. Repeatable" var=#true {
+        choices "codex" "claude"
+    }
+}
+
+cmd "completion" help="Print a shell completion script" effect="read" {
+    long_help #"""
+Thin wrapper over `usage generate completion <shell> orckit`. The script
+calls back into `usage complete-word` with this spec, so dynamic candidates
+(run names, handles, check names) come from the live orckits clone.
+"""#
+    arg "<shell>" help="Shell to generate for" {
+        choices "bash" "zsh" "fish" "nu" "powershell"
+    }
+    example #"orckit completion zsh > ~/.zfunc/_orckit"# header="Install zsh completions"
+}
+
+cmd "usage" help="Print this usage spec (for `usage generate completion --usage-cmd`)" effect="read" hide=#true
